@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E-Hadir Pelajar | Kiosk Digital V1.0</title>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --bg-gradient: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            --card-bg: #ffffff;
+            --text-dark: #1e1b4b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-dark);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 440px;
+            background: var(--card-bg);
+            padding: 35px 28px;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.18);
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            position: relative;
+        }
+
+        .brand-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            background: #e0e7ff;
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .logo {
+            width: 75px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--text-dark);
+            margin: 0 0 4px 0;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .status-box {
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border: 1px solid #c7d2fe;
+            background: #e0e7ff;
+            color: #3730a3;
+            transition: 0.3s ease;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 24px;
+            background: #0f172a;
+            display: none;
+            transform: scaleX(-1);
+            border: 4px solid #e0e7ff;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 14px;
+            border: 2px solid #c7d2fe;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            text-align: center;
+            box-sizing: border-box;
+            outline: none;
+            font-weight: 700;
+            background: #f8fafc;
+            color: var(--text-dark);
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            background: #ffffff;
+        }
+
+        .btn-main {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+            transition: 0.2s;
+        }
+
+        .btn-main:active {
+            transform: scale(0.98);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.08); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        #sleepOverlay {
+            position: fixed;
+            inset: 0;
+            background: #090d16;
+            z-index: 999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #sleepOverlay img {
+            width: 130px;
+            animation: pulse 3s infinite ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        #sleepOverlay p {
+            color: #a5b4fc;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Overlay Mod Tidur -->
+<div id="sleepOverlay" onclick="wakeUp()">
+    <img src="ehadir.png" alt="Logo E-Hadir">
+    <p>Sentuh Skrin Untuk Mula Imbas</p>
+</div>
+
+<!-- Overlay Keputusan Kehadiran -->
+<div id="overlay" class="overlay">
+    <div id="overlayIcon" style="font-size: 5rem; margin-bottom: 10px;">✅</div>
+    <div id="overlayText" style="font-size: 1.5rem; font-weight: 800; text-align: center; padding: 20px;"></div>
+</div>
+
+<!-- Modal Pengesahan Wajah AI -->
+<div id="confirmModal" class="overlay" style="background: rgba(15, 23, 42, 0.92); z-index: 101;">
+    <div style="background: #ffffff; color: var(--text-dark); padding: 30px 25px; border-radius: 28px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">PENGESAHAN IDENTITI</span>
+        <h2 style="margin: 8px 0 15px 0; font-size: 1.2rem; font-weight: 800;">Adakah Ini Wajah Anda?</h2>
+        <div id="confirmName" style="font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 25px; padding: 12px; background: #e0e7ff; border-radius: 16px; word-break: break-word;">NAMA PELAJAR</div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="confirmMatch(true)" style="flex: 1; padding: 14px; background: var(--success); color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer;">YA, BETUL</button>
+            <button onclick="confirmMatch(false)" style="flex: 1; padding: 14px; background: #f43f5e; color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer;">BUKAN SAYA</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Kod Akses Individu Pelajar -->
+<div id="studentCodeModal" class="overlay" style="background: rgba(15, 23, 42, 0.92); z-index: 102;">
+    <div style="background: #ffffff; color: var(--text-dark); padding: 25px 20px; border-radius: 28px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">MOD MANUAL</span>
+        <h3 style="margin: 8px 0 10px 0; color: var(--text-dark);">KOD AKSES INDIVIDU</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; font-weight: 600;">Masukkan 4-6 digit kod rahsia anda</p>
+        <input type="password" id="studentCodeInput" placeholder="KOD AKSES" maxlength="6" inputmode="numeric" style="font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 15px;">
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closeStudentCodeModal()" style="flex: 1; padding: 12px; background: #e2e8f0; color: var(--text-dark); border: none; border-radius: 14px; font-weight: 800; font-size: 0.9rem; cursor: pointer;">BATAL</button>
+            <button onclick="verifyStudentCode()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.9rem; cursor: pointer;">SAHKAN</button>
+        </div>
+    </div>
+</div>
+
+<!-- Container Utama -->
+<div class="container">
+    <div class="brand-badge">SISTEM MURID DIGITAL</div>
+    <br>
+    <img src="ehadir.png" alt="Logo" class="logo">
+    <h1>E-HADIR PELAJAR</h1>
+    <div class="subtitle">Mod Imbasan Wajah Pintar</div>
+
+    <div id="status" class="status-box">Memulakan sistem AI...</div>
+
+    <div id="pinSection" style="display:none;">
+        <input type="password" id="pinInput" placeholder="MASUKKAN PIN KIOSK (6-DIGIT)" maxlength="6" inputmode="numeric">
+        <button class="btn-main" onclick="verifyPin()">AKTIFKAN KAMERA</button>
+    </div>
+
+    <video id="video" autoplay muted playsinline></video>
+
+    <!-- Butang Mod Manual Kod Akses -->
+    <button id="manualCodeBtn" class="btn-main" onclick="openStudentCodeModal()" style="background: var(--accent); margin-top: 14px; display: none;">GUNA KOD AKSES INDIVIDU</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyD834R5Au1ksM0h-G0imluipJIN1br2g2g",
+        authDomain: "panitia-5be3a.firebaseapp.com",
+        projectId: "panitia-5be3a",
+        storageBucket: "panitia-5be3a.firebasestorage.app",
+        messagingSenderId: "814796521590",
+        appId: "1:814796521590:web:c0e31fa985401bcc571f57"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const DAILY_PIN = "123456"; 
+    const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
+    let registeredUsers = [];
+    let isProcessing = false;
+    let lastScanTime = 0;
+    let pendingName = "";
+    let wrongMatchCount = 0;
+    const beep = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+
+    let sleepTimer;
+    let isSleeping = false;
+    const SLEEP_TIMEOUT = 10000;
+
+    window.goToSleep = function() {
+        if (document.getElementById('pinSection').style.display === "block" || isProcessing) return;
+        isSleeping = true;
+        document.getElementById('sleepOverlay').style.display = "flex";
+    };
+
+    window.wakeUp = function() {
+        if (!isSleeping) return;
+        isSleeping = false;
+        document.getElementById('sleepOverlay').style.display = "none";
+        resetTimer();
+    };
+
+    function resetTimer() {
+        clearTimeout(sleepTimer);
+        if (!isSleeping && document.getElementById('pinSection').style.display === "none") {
+            sleepTimer = setTimeout(goToSleep, SLEEP_TIMEOUT);
+        }
+    }
+
+    window.addEventListener('touchstart', () => { if(isSleeping) wakeUp(); else resetTimer(); });
+    window.addEventListener('click', () => { if(isSleeping) wakeUp(); else resetTimer(); });
+
+    async function initSystem() {
+        try {
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 224; tempCanvas.height = 224;
+            await faceapi.detectSingleFace(tempCanvas, new faceapi.TinyFaceDetectorOptions());
+            
+            document.getElementById('status').innerText = "Sistem AI Sedia. Sila Masukkan PIN.";
+            document.getElementById('pinSection').style.display = "block";
+        } catch (e) {
+            document.getElementById('status').innerText = "Gagal memuatkan modul AI.";
+        }
+    }
+    initSystem();
+
+    window.verifyPin = async function() {
+        if(document.getElementById('pinInput').value !== DAILY_PIN) {
+            alert("PIN Salah!"); return;
+        }
+
+        document.getElementById('pinSection').style.display = "none";
+        document.getElementById('status').innerText = "Memuatkan senarai murid...";
+
+        try {
+            const snap = await getDocs(collection(db, "users"));
+            registeredUsers = snap.docs.map(doc => {
+                const data = doc.data();
+                let userDescs = [];
+                if (data.descriptors && Array.isArray(data.descriptors)) {
+                    userDescs = data.descriptors.map(item => new Float32Array(item.d));
+                }
+                return {
+                    name: data.name || data.nama || "",
+                    code: data.code || "",
+                    descriptors: userDescs
+                };
+            }).filter(u => u.name.trim() !== "");
+
+            startCamera();
+        } catch (err) { 
+            alert("Ralat pangkalan data: " + err.message); 
+            console.error(err);
+        }
+    };
+
+    function startCamera() {
+        navigator.mediaDevices.getUserMedia({ 
+            video: { width: { ideal: 400 }, height: { ideal: 300 }, facingMode: "user" } 
+        })
+        .then(stream => {
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            video.style.display = "block";
+            document.getElementById('manualCodeBtn').style.display = "block";
+            
+            video.onloadedmetadata = () => {
+                video.play();
+                document.getElementById('status').innerText = "Kamera bersedia. Silakan berada di hadapan skrin.";
+                resetTimer();
+                requestAnimationFrame(scanLoop);
+            };
+        })
+        .catch(err => {
+            document.getElementById('status').innerText = "Ralat Kamera: " + err.message;
+        });
+    }
+
+    async function scanLoop(now) {
+        if (isProcessing || isSleeping) {
+            requestAnimationFrame(scanLoop);
+            return;
+        }
+
+        if (!lastScanTime || now - lastScanTime >= 150) {
+            lastScanTime = now;
+            await doScan();
+        }
+        requestAnimationFrame(scanLoop);
+    }
+
+    async function doScan() {
+        const video = document.getElementById('video');
+        const statusBox = document.getElementById('status');
+        
+        try {
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+                .withFaceLandmarks()
+                .withFaceDescriptor();
+            
+            if (detection) {
+                resetTimer();
+                let bestMatchName = "Tidak Dikenali";
+                let lowestDist = 1.0;
+
+                for (let user of registeredUsers) {
+                    if (user.descriptors && user.descriptors.length > 0) {
+                        for (let savedDesc of user.descriptors) {
+                            const dist = faceapi.euclideanDistance(detection.descriptor, savedDesc);
+                            if (dist < lowestDist) {
+                                lowestDist = dist;
+                                bestMatchName = user.name;
+                            }
+                        }
+                    }
+                }
+
+                if (lowestDist < 0.48) { 
+                    isProcessing = true;
+                    beep.play();
+                    pendingName = bestMatchName;
+                    
+                    document.getElementById('confirmName').innerText = pendingName;
+                    document.getElementById('confirmModal').style.display = "flex";
+                    return; 
+                } else {
+                    statusBox.innerText = `Wajah dikesan. Sila rapatkan wajah ke kamera.`;
+                    statusBox.style.color = "#c2410c";
+                }
+            } else {
+                statusBox.innerText = "Mencari wajah murid...";
+                statusBox.style.color = "#3730a3";
+            }
+        } catch (error) {
+            console.error("Ralat AI:", error);
+            statusBox.innerText = "Sistem imbasan terhenti.";
+            statusBox.style.color = "#dc2626";
+        }
+    }
+
+    async function saveAttendance(name) {
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA');
+        
+        const isLate = (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() > 10));
+        const status = isLate ? "Hadir (Lewat)" : "Hadir";
+        const statusBox = document.getElementById('status'); 
+        
+        try {
+            const qAtt = query(collection(db, "attendance"), where("name", "==", name));
+            const querySnapshot = await getDocs(qAtt);
+            
+            let alreadyScanned = false;
+            let firstScannedTime = "";
+
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const ts = data.timestamp?.toDate();
+                if (ts && ts.toLocaleDateString('en-CA') === todayStr) {
+                    alreadyScanned = true;
+                    firstScannedTime = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); 
+                }
+            });
+
+            const overlay = document.getElementById('overlay');
+            const overlayText = document.getElementById('overlayText');
+            const overlayIcon = document.getElementById('overlayIcon');
+
+            if (alreadyScanned) {
+                overlay.style.backgroundColor = "#f59e0b";
+                overlayIcon.innerText = "ℹ️";
+                overlayText.innerHTML = `SUDAH DIREKODKAN<br><span style="font-size:1.8rem;">${name}</span><br><br><span style="font-size:1rem; opacity:0.9">Telah diimbas jam ${firstScannedTime}</span>`;
+            } else {
+                await addDoc(collection(db, "attendance"), { name: name, timestamp: serverTimestamp(), status: status });
+                overlay.style.backgroundColor = "#10b981";
+                overlayIcon.innerText = "✅";
+                overlayText.innerHTML = `REKOD BERJAYA<br><span style="font-size:1.8rem;">${name}</span><br><br><span style="font-size:1rem; opacity:0.9">${status} pada ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+            }
+
+            overlay.style.display = "flex";
+            
+            setTimeout(() => {
+                overlay.style.display = "none"; 
+                statusBox.innerText = "Mencari wajah murid..."; 
+                statusBox.style.color = "#3730a3";
+                isProcessing = false;
+                lastScanTime = 0; 
+            }, 3500);
+
+        } catch (e) {
+            console.error("Ralat DB:", e);
+            statusBox.innerText = "Ralat Rangkaian. Sila cuba lagi.";
+            statusBox.style.color = "#dc2626";
+            
+            setTimeout(() => {
+                statusBox.innerText = "Mencari wajah murid..."; 
+                statusBox.style.color = "#3730a3";
+                isProcessing = false;
+            }, 3000);
+        }
+    }
+
+    window.confirmMatch = function(isMatch) {
+    document.getElementById('confirmModal').style.display = "none";
+    
+    if (isMatch) {
+        wrongMatchCount = 0; // Reset kaunter jika jawapan betul
+        saveAttendance(pendingName);
+    } else {
+        wrongMatchCount++; // Tambah kiraan setiap kali "BUKAN SAYA" ditekan
+        
+        if (wrongMatchCount >= 2) {
+            wrongMatchCount = 0; // Reset semula kaunter
+            alert("Wajah tidak dikesan dengan tepat. Sila gunakan Kod Akses Individu anda.");
+            
+            // Buka modal Kod Akses Individu secara automatik
+            openStudentCodeModal();
+        } else {
+            alert("Sila berdiri berhadapan kamera untuk imbasan semula.");
+            setTimeout(() => { isProcessing = false; }, 1000);
+        }
+    }
+};
+
+    window.openStudentCodeModal = function() {
+        isProcessing = true;
+        document.getElementById('studentCodeInput').value = "";
+        document.getElementById('studentCodeModal').style.display = "flex";
+    };
+
+    window.closeStudentCodeModal = function() {
+        document.getElementById('studentCodeModal').style.display = "none";
+        isProcessing = false;
+    };
+
+    window.verifyStudentCode = function() {
+        const inputCode = document.getElementById('studentCodeInput').value.trim();
+        if (!inputCode) return alert("Sila masukkan kod akses!");
+
+        const matchedUser = registeredUsers.find(u => u.code === inputCode);
+
+        if (matchedUser) {
+            document.getElementById('studentCodeModal').style.display = "none";
+            beep.play();
+            saveAttendance(matchedUser.name);
+        } else {
+            alert("Kod Akses Tidak Ditemui / Salah!");
+        }
+    };
+</script>
+</body>
+</html>
