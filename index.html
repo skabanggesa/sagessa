@@ -2,250 +2,400 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>E-Hadir Pelajar | Kiosk Digital V1.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Imbasan | E-Hadir Pelajar</title>
     
+    <!-- Face API & Firebase libraries -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
             --accent: #06b6d4;
+            --danger: #f43f5e;
             --success: #10b981;
-            --bg-gradient: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
-            --card-bg: #ffffff;
-            --text-dark: #1e1b4b;
-            --text-muted: #64748b;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --border: #334155;
         }
 
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: var(--bg-gradient);
-            margin: 0;
+        [data-theme="light"] {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            color: var(--text); 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.3s, color 0.3s; 
+        }
+
+        .header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--card); 
+            padding: 16px 5%; 
+            border-bottom: 2px solid var(--border); 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+        }
+
+        .clock-badge {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            border: 1px solid var(--primary);
+        }
+
+        .main-container { 
+            padding: 25px 5%; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 25px; 
+            flex: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 90%;
+        }
+
+        @media (min-width: 992px) { 
+            .main-container { 
+                grid-template-columns: 1.2fr 0.8fr; 
+            } 
+        }
+
+        .card { 
+            background: var(--card); 
+            padding: 24px; 
+            border-radius: 24px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+            border: 1px solid var(--border); 
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { 
+            font-size: 1.1rem; 
+            margin-top: 0; 
+            margin-bottom: 18px; 
+            font-weight: 800; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            color: var(--primary); 
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid var(--border);
+            aspect-ratio: 4/3;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            color: var(--text-dark);
         }
 
-        .container {
-            width: 90%;
-            max-width: 440px;
-            background: var(--card-bg);
-            padding: 35px 28px;
-            border-radius: 32px;
-            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.18);
-            text-align: center;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            position: relative;
+        video { 
+            width: 100%; 
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); 
         }
 
-        .brand-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            background: #e0e7ff;
-            color: var(--primary);
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-            text-transform: uppercase;
+        canvas.overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            pointer-events: none;
         }
 
-        .logo {
-            width: 75px;
-            margin-bottom: 10px;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.08));
+        .scanner-frame {
+            position: absolute;
+            inset: 20px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            pointer-events: none;
+            box-sizing: border-box;
         }
 
-        h1 {
-            font-size: 1.5rem;
-            color: var(--text-dark);
-            margin: 0 0 4px 0;
-            font-weight: 800;
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            box-shadow: 0 0 15px var(--primary);
+            animation: scan 2.5s infinite ease-in-out;
         }
 
-        .subtitle {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-bottom: 24px;
-            font-weight: 600;
+        @keyframes scan {
+            0% { top: 5%; opacity: 0.2; }
+            50% { top: 90%; opacity: 1; }
+            100% { top: 5%; opacity: 0.2; }
         }
 
         .status-box {
+            margin-top: 15px;
             padding: 14px 18px;
-            border-radius: 18px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-            border: 1px solid #c7d2fe;
-            background: #e0e7ff;
-            color: #3730a3;
-            transition: 0.3s ease;
+            border-radius: 14px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            text-align: center;
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
-        video {
-            width: 100%;
-            border-radius: 24px;
-            background: #0f172a;
-            display: none;
-            transform: scaleX(-1);
-            border: 4px solid #e0e7ff;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-        }
-
-        input {
-            width: 100%;
-            padding: 16px;
-            margin-bottom: 14px;
-            border: 2px solid #c7d2fe;
-            border-radius: 16px;
+        .login-input { 
+            width: 100%; 
+            padding: 14px; 
+            margin: 8px 0 16px 0; 
+            border: 1px solid var(--border); 
+            border-radius: 14px; 
+            box-sizing: border-box; 
+            background: var(--bg); 
+            color: var(--text); 
+            font-weight: 700; 
+            outline: none; 
             font-size: 1.1rem;
             text-align: center;
-            box-sizing: border-box;
-            outline: none;
-            font-weight: 700;
-            background: #f8fafc;
-            color: var(--text-dark);
+            letter-spacing: 2px;
         }
 
-        input:focus {
-            border-color: var(--primary);
-            background: #ffffff;
+        .login-input:focus { 
+            border-color: var(--primary); 
         }
 
-        .btn-main {
-            width: 100%;
-            padding: 16px;
+        .btn { 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 14px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            font-size: 0.9rem; 
+            transition: 0.2s; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;
+            gap: 8px; 
+            text-decoration: none;
+        }
+
+        .btn-save { 
+            background: var(--primary); 
+            color: white; 
+            width: 100%; 
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); 
+        }
+
+        .btn-save:hover { 
+            background: var(--primary-dark); 
+        }
+
+        .btn-outline { 
+            background: transparent; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .recent-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 380px;
+            overflow-y: auto;
+        }
+
+        .recent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg);
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tag { 
+            padding: 5px 12px; 
+            border-radius: 8px; 
+            font-size: 0.72rem; 
+            font-weight: 800; 
+            display: inline-block; 
+        }
+
+        .tag-hadir { background: #d1fae5; color: #065f46; }
+        .tag-lewat { background: #fef3c7; color: #92400e; }
+
+        /* Modal Pengesahan Toast */
+        .toast-modal {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            background: var(--card);
+            border: 2px solid var(--success);
+            border-radius: 20px;
+            padding: 20px 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            gap: 15px;
+            max-width: 380px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
             background: var(--primary);
             color: white;
-            border: none;
-            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
             font-weight: 800;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
-            transition: 0.2s;
         }
 
-        .btn-main:active {
-            transform: scale(0.98);
-        }
-
-        .overlay {
+        .custom-alert {
             position: fixed;
-            inset: 0;
-            color: white;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 12px 24px;
+            border-radius: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            backdrop-filter: blur(8px);
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.08); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        #sleepOverlay {
-            position: fixed;
-            inset: 0;
-            background: #090d16;
-            z-index: 999;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        #sleepOverlay img {
-            width: 130px;
-            animation: pulse 3s infinite ease-in-out;
-            margin-bottom: 20px;
-        }
-
-        #sleepOverlay p {
-            color: #a5b4fc;
-            font-size: 1.1rem;
+            z-index: 10000;
             font-weight: 700;
-            margin: 0;
-            letter-spacing: 1px;
+            font-size: 0.9rem;
         }
     </style>
 </head>
 <body>
 
-<!-- Overlay Mod Tidur -->
-<div id="sleepOverlay" onclick="wakeUp()">
-    <img src="ssa.png" alt="Logo E-Hadir">
-    <p>Sentuh Skrin Untuk Mula Imbas</p>
+<div class="header">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <img src="ssa.png" alt="Logo" style="width:36px;" onerror="this.style.display='none'">
+        <span style="font-weight: 800; font-size: 1.1rem; color: var(--text);">
+            E-HADIR <span style="color:var(--primary)">PELAJAR</span>
+        </span>
+    </div>
+    
+    <div class="clock-badge" id="liveClock">00:00:00 AM</div>
+
+    <div style="display:flex; gap:10px;">
+        <button onclick="toggleTheme()" class="btn btn-outline" title="Tukar Mod Cerah/Gelap">🌓</button>
+        <a href="admin.html" class="btn btn-outline" style="font-size: 0.8rem;">⚙️ Admin</a>
+    </div>
 </div>
 
-<!-- Overlay Keputusan Kehadiran -->
-<div id="overlay" class="overlay">
-    <div id="overlayIcon" style="font-size: 5rem; margin-bottom: 10px;">✅</div>
-    <div id="overlayText" style="font-size: 1.5rem; font-weight: 800; text-align: center; padding: 20px;"></div>
-</div>
+<div class="main-container">
+    <!-- Kad Utama Imbasan Wajah -->
+    <div class="card">
+        <h2>📸 Kiosk Imbasan Wajah</h2>
+        
+        <div class="video-container">
+            <video id="videoFeed" autoplay muted playsinline></video>
+            <canvas id="overlayCanvas" class="overlay"></canvas>
+            <div class="scanner-frame"></div>
+            <div class="scan-line"></div>
+        </div>
 
-<!-- Modal Pengesahan Wajah AI -->
-<div id="confirmModal" class="overlay" style="background: rgba(15, 23, 42, 0.92); z-index: 101;">
-    <div style="background: #ffffff; color: var(--text-dark); padding: 30px 25px; border-radius: 28px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">PENGESAHAN IDENTITI</span>
-        <h2 style="margin: 8px 0 15px 0; font-size: 1.2rem; font-weight: 800;">Adakah Ini Wajah Anda?</h2>
-        <div id="confirmName" style="font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 25px; padding: 12px; background: #e0e7ff; border-radius: 16px; word-break: break-word;">NAMA PELAJAR</div>
-        <div style="display: flex; gap: 10px;">
-            <button onclick="confirmMatch(true)" style="flex: 1; padding: 14px; background: var(--success); color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer;">YA, BETUL</button>
-            <button onclick="confirmMatch(false)" style="flex: 1; padding: 14px; background: #f43f5e; color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.95rem; cursor: pointer;">BUKAN SAYA</button>
+        <div id="statusLabel" class="status-box">
+            <span>⌛ Memuatkan Model AI... Sila tunggu.</span>
+        </div>
+    </div>
+
+    <!-- Kad Imbasan Manual & Kehadiran Terkini -->
+    <div style="display: flex; flex-direction: column; gap: 25px;">
+        <!-- Alternatif Kod Akses -->
+        <div class="card">
+            <h2>🔢 Imbasan Manual (Kod Akses)</h2>
+            <p style="font-size: 0.8rem; color: #64748b; margin:-10px 0 10px 0;">Gunakan Kod 4-6 Digit Pelajar jika imbasan muka gagal.</p>
+            <input type="password" id="studentPinInput" class="login-input" placeholder="Masukkan Kod Akses" maxlength="6" inputmode="numeric">
+            <button onclick="submitManualCode()" class="btn btn-save">Sahkan Kehadiran</button>
+        </div>
+
+        <!-- Rekod Kehadiran Terkini Hari Ini -->
+        <div class="card" style="flex:1;">
+            <h2>📋 Kehadiran Terkini Sesi Ini</h2>
+            <ul id="recentAttendanceList" class="recent-list">
+                <li style="text-align: center; color: #64748b; padding: 20px; font-size: 0.85rem;">Belum ada imbasan terkini.</li>
+            </ul>
         </div>
     </div>
 </div>
 
-<!-- Modal Kod Akses Individu Pelajar -->
-<div id="studentCodeModal" class="overlay" style="background: rgba(15, 23, 42, 0.92); z-index: 102;">
-    <div style="background: #ffffff; color: var(--text-dark); padding: 25px 20px; border-radius: 28px; width: 85%; max-width: 340px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-        <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">MOD MANUAL</span>
-        <h3 style="margin: 8px 0 10px 0; color: var(--text-dark);">KOD AKSES INDIVIDU</h3>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px; font-weight: 600;">Masukkan 4-6 digit kod rahsia anda</p>
-        <input type="password" id="studentCodeInput" placeholder="KOD AKSES" maxlength="6" inputmode="numeric" style="font-size: 1.5rem; letter-spacing: 4px; margin-bottom: 15px;">
-        <div style="display: flex; gap: 10px;">
-            <button onclick="closeStudentCodeModal()" style="flex: 1; padding: 12px; background: #e2e8f0; color: var(--text-dark); border: none; border-radius: 14px; font-weight: 800; font-size: 0.9rem; cursor: pointer;">BATAL</button>
-            <button onclick="verifyStudentCode()" style="flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 14px; font-weight: 800; font-size: 0.9rem; cursor: pointer;">SAHKAN</button>
+<!-- Modal Notifikasi Segera -->
+<div id="toastNotification" class="toast-modal">
+    <div class="toast-avatar" id="toastAvatar">🎓</div>
+    <div>
+        <div style="font-size:0.75rem; color:#64748b; font-weight:800; text-transform:uppercase;">KEHADIRAN DICATAT</div>
+        <div id="toastName" style="font-size:1rem; font-weight:800; color:var(--text); margin:2px 0;">Nama Pelajar</div>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+            <span id="toastTag" class="tag tag-hadir">Hadir</span>
+            <span id="toastTime" style="font-size:0.78rem; font-weight:700; color:#64748b;">00:00 AM</span>
         </div>
     </div>
 </div>
 
-<!-- Container Utama -->
-<div class="container">
-    <div class="brand-badge">SISTEM MURID DIGITAL</div>
-    <br>
-    <img src="ssa.png" alt="Logo" class="logo">
-    <h1>E-HADIR PELAJAR</h1>
-    <div class="subtitle">Mod Imbasan Wajah Pintar</div>
-
-    <div id="status" class="status-box">Memulakan sistem AI...</div>
-
-    <div id="pinSection" style="display:none;">
-        <input type="password" id="pinInput" placeholder="MASUKKAN PIN KIOSK (6-DIGIT)" maxlength="6" inputmode="numeric">
-        <button class="btn-main" onclick="verifyPin()">AKTIFKAN KAMERA</button>
-    </div>
-
-    <video id="video" autoplay muted playsinline></video>
-
-    <!-- Butang Mod Manual Kod Akses -->
-    <button id="manualCodeBtn" class="btn-main" onclick="openStudentCodeModal()" style="background: var(--accent); margin-top: 14px; display: none;">GUNA KOD AKSES INDIVIDU</button>
-</div>
+<div id="customAlert" class="custom-alert"></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyD834R5Au1ksM0h-G0imluipJIN1br2g2g",
@@ -259,285 +409,266 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const DAILY_PIN = "123456"; 
-    const MODEL_URL = 'https://raw.githubusercontent.com/vladmandic/face-api/master/model/';
-    let registeredUsers = [];
-    let isProcessing = false;
-    let lastScanTime = 0;
-    let pendingName = "";
-    let wrongMatchCount = 0;
-    const beep = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models/';
+    const LATE_TIME_THRESHOLD = "07:10"; // Waktu lewat pelajar
 
-    let sleepTimer;
-    let isSleeping = false;
-    const SLEEP_TIMEOUT = 10000;
+    let faceMatcher = null;
+    let allStudents = [];
+    let recentLogged = new Map(); // Untuk elak pengulangan imbasan dalam masa singkat (cooldown 30s)
+    let isProcessingScan = false;
 
-    window.goToSleep = function() {
-        if (document.getElementById('pinSection').style.display === "block" || isProcessing) return;
-        isSleeping = true;
-        document.getElementById('sleepOverlay').style.display = "flex";
+    function startClock() {
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            document.getElementById('liveClock').innerText = timeStr;
+        }, 1000);
+    }
+    startClock();
+
+    window.toggleTheme = () => {
+        const current = document.body.getAttribute('data-theme');
+        document.body.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
     };
 
-    window.wakeUp = function() {
-        if (!isSleeping) return;
-        isSleeping = false;
-        document.getElementById('sleepOverlay').style.display = "none";
-        resetTimer();
-    };
-
-    function resetTimer() {
-        clearTimeout(sleepTimer);
-        if (!isSleeping && document.getElementById('pinSection').style.display === "none") {
-            sleepTimer = setTimeout(goToSleep, SLEEP_TIMEOUT);
-        }
+    function showAlert(msg) {
+        const alertBox = document.getElementById('customAlert');
+        alertBox.innerText = msg;
+        alertBox.style.display = 'block';
+        setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
     }
 
-    window.addEventListener('touchstart', () => { if(isSleeping) wakeUp(); else resetTimer(); });
-    window.addEventListener('click', () => { if(isSleeping) wakeUp(); else resetTimer(); });
-
-    async function initSystem() {
+    async function initKiosk() {
+        const statusLabel = document.getElementById('statusLabel');
         try {
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            statusLabel.innerHTML = '<span>⏳ Memuatkan Enjin AI Pengesanan Wajah...</span>';
             
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 224; tempCanvas.height = 224;
-            await faceapi.detectSingleFace(tempCanvas, new faceapi.TinyFaceDetectorOptions());
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+            ]);
+
+            statusLabel.innerHTML = '<span>🔄 Menyambung pangkalan data pelajar...</span>';
             
-            document.getElementById('status').innerText = "Sistem AI Sedia. Sila Masukkan PIN.";
-            document.getElementById('pinSection').style.display = "block";
-        } catch (e) {
-            document.getElementById('status').innerText = "Gagal memuatkan modul AI.";
-        }
-    }
-    initSystem();
+            // Listen to student database
+            onSnapshot(collection(db, "users"), (snap) => {
+                allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                buildFaceMatcher();
+            });
 
-    window.verifyPin = async function() {
-        if(document.getElementById('pinInput').value !== DAILY_PIN) {
-            alert("PIN Salah!"); return;
-        }
-
-        document.getElementById('pinSection').style.display = "none";
-        document.getElementById('status').innerText = "Memuatkan senarai murid...";
-
-        try {
-            const snap = await getDocs(collection(db, "users"));
-            registeredUsers = snap.docs.map(doc => {
-                const data = doc.data();
-                let userDescs = [];
-                if (data.descriptors && Array.isArray(data.descriptors)) {
-                    userDescs = data.descriptors.map(item => new Float32Array(item.d));
-                }
-                return {
-                    name: data.name || data.nama || "",
-                    code: data.code || "",
-                    descriptors: userDescs
-                };
-            }).filter(u => u.name.trim() !== "");
+            // Listen to recent attendance today
+            listenRecentAttendance();
 
             startCamera();
-        } catch (err) { 
-            alert("Ralat pangkalan data: " + err.message); 
-            console.error(err);
-        }
-    };
 
-    function startCamera() {
-        navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 400 }, height: { ideal: 300 }, facingMode: "user" } 
-        })
-        .then(stream => {
-            const video = document.getElementById('video');
-            video.srcObject = stream;
-            video.style.display = "block";
-            document.getElementById('manualCodeBtn').style.display = "block";
-            
-            video.onloadedmetadata = () => {
-                video.play();
-                document.getElementById('status').innerText = "Kamera bersedia. Silakan berada di hadapan skrin.";
-                resetTimer();
-                requestAnimationFrame(scanLoop);
-            };
-        })
-        .catch(err => {
-            document.getElementById('status').innerText = "Ralat Kamera: " + err.message;
-        });
+        } catch (err) {
+            console.error("Ralat Inisialisasi Kiosk:", err);
+            statusLabel.innerHTML = '<span style="color:var(--danger)">❌ Gagal Memuatkan Model Kamera/AI!</span>';
+        }
     }
 
-    async function scanLoop(now) {
-        if (isProcessing || isSleeping) {
-            requestAnimationFrame(scanLoop);
+    function buildFaceMatcher() {
+        const labeledDescriptors = [];
+
+        allStudents.forEach(student => {
+            if (student.descriptors && student.descriptors.length > 0) {
+                const floatDescriptors = student.descriptors.map(d => new Float32Array(d.d));
+                const studentName = student.name || student.nama || "PELAJAR";
+                labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(studentName, floatDescriptors));
+            }
+        });
+
+        if (labeledDescriptors.length > 0) {
+            faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48); // Threshold pengecaman
+            document.getElementById('statusLabel').innerHTML = `<span style="color:var(--success)">✅ AI SEDIA | ${labeledDescriptors.length} Pelajar Berdaftar</span>`;
+        } else {
+            faceMatcher = null;
+            document.getElementById('statusLabel').innerHTML = `<span style="color:var(--warning)">⚠️ Tiada sampel wajah berdaftar dalam sistem!</span>`;
+        }
+    }
+
+    async function startCamera() {
+        const video = document.getElementById('videoFeed');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
+            });
+            video.srcObject = stream;
+            
+            video.addEventListener('play', () => {
+                const canvas = document.getElementById('overlayCanvas');
+                const displaySize = { width: video.videoWidth || 640, height: video.videoHeight || 480 };
+                faceapi.matchDimensions(canvas, displaySize);
+
+                setInterval(async () => {
+                    if (isProcessingScan || !faceMatcher) return;
+
+                    const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                        .withFaceLandmarks()
+                        .withFaceDescriptors();
+
+                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    if (resizedDetections.length > 0) {
+                        resizedDetections.forEach(detection => {
+                            const result = faceMatcher.findBestMatch(detection.descriptor);
+                            
+                            // Draw bounding box
+                            const box = detection.detection.box;
+                            const drawBox = new faceapi.draw.DrawBox(box, { 
+                                label: result.toString(), 
+                                boxColor: result.distance < 0.48 ? '#10b981' : '#f43f5e' 
+                            });
+                            drawBox.draw(canvas);
+
+                            if (result.distance < 0.48 && result.label !== 'unknown') {
+                                processAttendance(result.label);
+                            }
+                        });
+                    }
+                }, 300);
+            });
+        } catch (err) {
+            console.error("Gagal akses kamera:", err);
+            showAlert("Kamera tidak ditemui atau kebenaran ditolak.");
+        }
+    }
+
+    async function processAttendance(studentName) {
+        const now = new Date();
+        const currentTimeStr = now.toTimeString().substring(0, 5); // HH:MM
+        
+        // Elak pendaftaran berulang untuk pelajar yang sama dalam tempoh 30 saat
+        const lastScan = recentLogged.get(studentName);
+        if (lastScan && (now - lastScan) < 30000) {
             return;
         }
 
-        if (!lastScanTime || now - lastScanTime >= 150) {
-            lastScanTime = now;
-            await doScan();
-        }
-        requestAnimationFrame(scanLoop);
-    }
+        isProcessingScan = true;
+        recentLogged.set(studentName, now);
 
-    async function doScan() {
-        const video = document.getElementById('video');
-        const statusBox = document.getElementById('status');
-        
+        const isLate = currentTimeStr > LATE_TIME_THRESHOLD;
+        const statusText = isLate ? "Hadir (Lewat)" : "Hadir";
+
         try {
-            if (video.videoWidth === 0 || video.videoHeight === 0) return;
-
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
-                .withFaceLandmarks()
-                .withFaceDescriptor();
-            
-            if (detection) {
-                resetTimer();
-                let bestMatchName = "Tidak Dikenali";
-                let lowestDist = 1.0;
-
-                for (let user of registeredUsers) {
-                    if (user.descriptors && user.descriptors.length > 0) {
-                        for (let savedDesc of user.descriptors) {
-                            const dist = faceapi.euclideanDistance(detection.descriptor, savedDesc);
-                            if (dist < lowestDist) {
-                                lowestDist = dist;
-                                bestMatchName = user.name;
-                            }
-                        }
-                    }
-                }
-
-                if (lowestDist < 0.48) { 
-                    isProcessing = true;
-                    beep.play();
-                    pendingName = bestMatchName;
-                    
-                    document.getElementById('confirmName').innerText = pendingName;
-                    document.getElementById('confirmModal').style.display = "flex";
-                    return; 
-                } else {
-                    statusBox.innerText = `Wajah dikesan. Sila rapatkan wajah ke kamera.`;
-                    statusBox.style.color = "#c2410c";
-                }
-            } else {
-                statusBox.innerText = "Mencari wajah murid...";
-                statusBox.style.color = "#3730a3";
-            }
-        } catch (error) {
-            console.error("Ralat AI:", error);
-            statusBox.innerText = "Sistem imbasan terhenti.";
-            statusBox.style.color = "#dc2626";
-        }
-    }
-
-    async function saveAttendance(name) {
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-CA');
-        
-        const isLate = (now.getHours() > 7 || (now.getHours() === 7 && now.getMinutes() > 10));
-        const status = isLate ? "Hadir (Lewat)" : "Hadir";
-        const statusBox = document.getElementById('status'); 
-        
-        try {
-            const qAtt = query(collection(db, "attendance"), where("name", "==", name));
-            const querySnapshot = await getDocs(qAtt);
-            
-            let alreadyScanned = false;
-            let firstScannedTime = "";
-
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const ts = data.timestamp?.toDate();
-                if (ts && ts.toLocaleDateString('en-CA') === todayStr) {
-                    alreadyScanned = true;
-                    firstScannedTime = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); 
-                }
+            await addDoc(collection(db, "attendance"), {
+                name: studentName.toUpperCase(),
+                status: statusText,
+                timestamp: Timestamp.fromDate(now)
             });
 
-            const overlay = document.getElementById('overlay');
-            const overlayText = document.getElementById('overlayText');
-            const overlayIcon = document.getElementById('overlayIcon');
+            // Tunjuk Pop-up Notifikasi & Sebutan Audio
+            showToast(studentName, statusText, now);
+            speakGreeting(studentName);
 
-            if (alreadyScanned) {
-                overlay.style.backgroundColor = "#f59e0b";
-                overlayIcon.innerText = "ℹ️";
-                overlayText.innerHTML = `SUDAH DIREKODKAN<br><span style="font-size:1.8rem;">${name}</span><br><br><span style="font-size:1rem; opacity:0.9">Telah diimbas jam ${firstScannedTime}</span>`;
-            } else {
-                await addDoc(collection(db, "attendance"), { name: name, timestamp: serverTimestamp(), status: status });
-                overlay.style.backgroundColor = "#10b981";
-                overlayIcon.innerText = "✅";
-                overlayText.innerHTML = `REKOD BERJAYA<br><span style="font-size:1.8rem;">${name}</span><br><br><span style="font-size:1rem; opacity:0.9">${status} pada ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+        } catch (err) {
+            console.error("Ralat simpan kehadiran:", err);
+            showAlert("Gagal menyimpan rekod kehadiran!");
+        } finally {
+            setTimeout(() => { isProcessingScan = false; }, 2000);
+        }
+    }
+
+    window.submitManualCode = async () => {
+        const pinInput = document.getElementById('studentPinInput');
+        const code = pinInput.value.trim();
+
+        if (!code) {
+            showAlert("Sila masukkan Kod Akses Pelajar!");
+            return;
+        }
+
+        const found = allStudents.find(s => String(s.code).trim() === code);
+        if (found) {
+            const studentName = found.name || found.nama;
+            await processAttendance(studentName);
+            pinInput.value = "";
+        } else {
+            showAlert("Kod Akses Pelajar tidak sah!");
+        }
+    };
+
+    function showToast(name, status, dateObj) {
+        const toast = document.getElementById('toastNotification');
+        const toastName = document.getElementById('toastName');
+        const toastTag = document.getElementById('toastTag');
+        const toastTime = document.getElementById('toastTime');
+        const toastAvatar = document.getElementById('toastAvatar');
+
+        toastName.innerText = name;
+        toastTime.innerText = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        toastAvatar.innerText = name.charAt(0).toUpperCase();
+
+        if (status.includes("Lewat")) {
+            toastTag.innerText = "Hadir (Lewat)";
+            toastTag.className = "tag tag-lewat";
+            toast.style.borderColor = "var(--warning)";
+        } else {
+            toastTag.innerText = "Hadir";
+            toastTag.className = "tag tag-hadir";
+            toast.style.borderColor = "var(--success)";
+        }
+
+        toast.style.display = 'flex';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 4000);
+    }
+
+    function speakGreeting(name) {
+        if ('speechSynthesis' in window) {
+            const cleanName = name.split(' ')[0]; // Sebut nama depan
+            const utterance = new SpeechSynthesisUtterance(`Selamat datang, ${cleanName}`);
+            utterance.lang = 'ms-MY';
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function listenRecentAttendance() {
+        const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+        const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+
+        const q = query(
+            collection(db, "attendance"),
+            where("timestamp", ">=", Timestamp.fromDate(todayStart)),
+            where("timestamp", "<=", Timestamp.fromDate(todayEnd)),
+            orderBy("timestamp", "desc"),
+            limit(6)
+        );
+
+        onSnapshot(q, (snap) => {
+            const list = document.getElementById('recentAttendanceList');
+            list.innerHTML = "";
+
+            if (snap.empty) {
+                list.innerHTML = `<li style="text-align: center; color: #64748b; padding: 20px; font-size: 0.85rem;">Belum ada imbasan hari ini.</li>`;
+                return;
             }
 
-            overlay.style.display = "flex";
-            
-            setTimeout(() => {
-                overlay.style.display = "none"; 
-                statusBox.innerText = "Mencari wajah murid..."; 
-                statusBox.style.color = "#3730a3";
-                isProcessing = false;
-                lastScanTime = 0; 
-            }, 3500);
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const timeStr = data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
+                const isLate = (data.status || "").includes("Lewat");
 
-        } catch (e) {
-            console.error("Ralat DB:", e);
-            statusBox.innerText = "Ralat Rangkaian. Sila cuba lagi.";
-            statusBox.style.color = "#dc2626";
-            
-            setTimeout(() => {
-                statusBox.innerText = "Mencari wajah murid..."; 
-                statusBox.style.color = "#3730a3";
-                isProcessing = false;
-            }, 3000);
-        }
+                list.innerHTML += `
+                    <li class="recent-item">
+                        <div>
+                            <div style="font-weight:700; font-size:0.9rem; color:var(--text);">${data.name}</div>
+                            <div style="font-size:0.75rem; color:#64748b; font-weight:600;">${timeStr}</div>
+                        </div>
+                        <span class="tag ${isLate ? 'tag-lewat' : 'tag-hadir'}">${data.status || 'Hadir'}</span>
+                    </li>
+                `;
+            });
+        });
     }
 
-    window.confirmMatch = function(isMatch) {
-    document.getElementById('confirmModal').style.display = "none";
-    
-    if (isMatch) {
-        wrongMatchCount = 0; // Reset kaunter jika jawapan betul
-        saveAttendance(pendingName);
-    } else {
-        wrongMatchCount++; // Tambah kiraan setiap kali "BUKAN SAYA" ditekan
-        
-        if (wrongMatchCount >= 2) {
-            wrongMatchCount = 0; // Reset semula kaunter
-            alert("Wajah tidak dikesan dengan tepat. Sila gunakan Kod Akses Individu anda.");
-            
-            // Buka modal Kod Akses Individu secara automatik
-            openStudentCodeModal();
-        } else {
-            alert("Sila berdiri berhadapan kamera untuk imbasan semula.");
-            setTimeout(() => { isProcessing = false; }, 1000);
-        }
-    }
-};
-
-    window.openStudentCodeModal = function() {
-        isProcessing = true;
-        document.getElementById('studentCodeInput').value = "";
-        document.getElementById('studentCodeModal').style.display = "flex";
-    };
-
-    window.closeStudentCodeModal = function() {
-        document.getElementById('studentCodeModal').style.display = "none";
-        isProcessing = false;
-    };
-
-    window.verifyStudentCode = function() {
-        const inputCode = document.getElementById('studentCodeInput').value.trim();
-        if (!inputCode) return alert("Sila masukkan kod akses!");
-
-        const matchedUser = registeredUsers.find(u => u.code === inputCode);
-
-        if (matchedUser) {
-            document.getElementById('studentCodeModal').style.display = "none";
-            beep.play();
-            saveAttendance(matchedUser.name);
-        } else {
-            alert("Kod Akses Tidak Ditemui / Salah!");
-        }
-    };
+    // Launch initial setup on load
+    window.onload = initKiosk;
 </script>
 </body>
 </html>
