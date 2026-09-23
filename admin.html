@@ -11,81 +11,336 @@
 
     <style>
         /* Mod Gelap sebagai Tetapan Asas (Default) */
-:root {
-    --primary: #6366f1;
-    --primary-dark: #4f46e5;
-    --accent: #06b6d4;
-    --danger: #f43f5e;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --bg: #0f172a;
-    --card: #1e293b;
-    --text: #f8fafc;
-    --border: #334155;
-}
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #06b6d4;
+            --danger: #f43f5e;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --border: #334155;
+        }
 
-/* Mod Cerah (Apabila pengguna menukar ke mod cerah) */
-[data-theme="light"] {
-    --primary: #4f46e5;
-    --primary-dark: #3730a3;
-    --bg: #f1f5f9;
-    --card: #ffffff;
-    --text: #0f172a;
-    --border: #e2e8f0;
-}
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); margin: 0; color: var(--text); transition: 0.3s; }
-        .header { display: flex; align-items: center; justify-content: space-between; background: var(--card); padding: 16px 5%; border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); }
-        .main-container { padding: 25px 5%; display: grid; grid-template-columns: 1fr; gap: 25px; }
-        @media (min-width: 1200px) { .main-container { grid-template-columns: 360px 1fr; } }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: var(--card); padding: 18px; border-radius: 20px; border: 1px solid var(--border); text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .stat-card h4 { margin: 0; font-size: 0.72rem; color: #64748b; text-transform: uppercase; font-weight: 800; }
-        .stat-card p { margin: 8px 0 0; font-size: 1.8rem; font-weight: 800; color: var(--primary); }
-        
-        .analysis-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-        .analysis-table th { background: var(--primary); color: white; padding: 12px; font-size: 0.75rem; text-align: center; font-weight: 800; }
-        .analysis-table td { padding: 10px 14px; text-align: center; border-bottom: 1px solid var(--border); font-size: 0.88rem; font-weight: 600; }
-        .analysis-table tr:last-child td { border-bottom: none; }
-        .analysis-row-header { text-align: left !important; background: var(--bg); width: 60%; }
+        /* Mod Cerah (Apabila pengguna menukar ke mod cerah) */
+        [data-theme="light"] {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+        }
 
-        .card { background: var(--card); padding: 24px; border-radius: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid var(--border); }
-        h2 { font-size: 1.05rem; margin-top: 0; margin-bottom: 18px; font-weight: 800; display: flex; align-items: center; gap: 10px; color: var(--primary); }
-        video { width: 100%; border-radius: 18px; background: #0f172a; transform: scaleX(-1); border: 2px solid var(--border); }
-        .login-input, select { width: 100%; padding: 12px 14px; margin: 6px 0 14px 0; border: 1px solid var(--border); border-radius: 14px; box-sizing: border-box; background: var(--bg); color: var(--text); font-weight: 600; outline: none; }
-        .login-input:focus, select:focus { border-color: var(--primary); }
-        .btn { padding: 10px 18px; border: none; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-save { background: var(--primary); color: white; width: 100%; justify-content: center; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); }
-        .btn-save:hover { background: var(--primary-dark); }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            color: var(--text); 
+            transition: background-color 0.3s, color 0.3s; 
+        }
+
+        .header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            background: var(--card); 
+            padding: 16px 5%; 
+            border-bottom: 2px solid var(--border); 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); 
+        }
+
+        .main-container { 
+            padding: 25px 5%; 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 25px; 
+        }
+
+        @media (min-width: 1200px) { 
+            .main-container { 
+                grid-template-columns: 360px 1fr; 
+            } 
+        }
         
-        table.main-table { width: 100%; border-collapse: collapse; }
-        table.main-table th { text-align: left; padding: 12px; color: #64748b; font-size: 0.72rem; border-bottom: 2px solid var(--border); text-transform: uppercase; font-weight: 800; }
-        table.main-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 25px; 
+        }
+
+        .stat-card { 
+            background: var(--card); 
+            padding: 18px; 
+            border-radius: 20px; 
+            border: 1px solid var(--border); 
+            text-align: center; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
+        }
+
+        .stat-card h4 { 
+            margin: 0; 
+            font-size: 0.72rem; 
+            color: #64748b; 
+            text-transform: uppercase; 
+            font-weight: 800; 
+        }
+
+        .stat-card p { 
+            margin: 8px 0 0; 
+            font-size: 1.8rem; 
+            font-weight: 800; 
+            color: var(--primary); 
+        }
         
-        .tag { padding: 5px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 800; display: inline-block; }
+        .analysis-table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0; 
+            margin-top: 15px; 
+            border: 1px solid var(--border); 
+            border-radius: 14px; 
+            overflow: hidden; 
+        }
+
+        .analysis-table th { 
+            background: var(--primary); 
+            color: white; 
+            padding: 12px; 
+            font-size: 0.75rem; 
+            text-align: center; 
+            font-weight: 800; 
+        }
+
+        .analysis-table td { 
+            padding: 10px 14px; 
+            text-align: center; 
+            border-bottom: 1px solid var(--border); 
+            font-size: 0.88rem; 
+            font-weight: 600; 
+        }
+
+        .analysis-table tr:last-child td { 
+            border-bottom: none; 
+        }
+
+        .analysis-row-header { 
+            text-align: left !important; 
+            background: var(--bg); 
+            width: 60%; 
+        }
+
+        .card { 
+            background: var(--card); 
+            padding: 24px; 
+            border-radius: 24px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
+            border: 1px solid var(--border); 
+        }
+
+        h2 { 
+            font-size: 1.05rem; 
+            margin-top: 0; 
+            margin-bottom: 18px; 
+            font-weight: 800; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            color: var(--primary); 
+        }
+
+        video { 
+            width: 100%; 
+            border-radius: 18px; 
+            background: #0f172a; 
+            transform: scaleX(-1); 
+            border: 2px solid var(--border); 
+        }
+
+        .login-input, select { 
+            width: 100%; 
+            padding: 12px 14px; 
+            margin: 6px 0 14px 0; 
+            border: 1px solid var(--border); 
+            border-radius: 14px; 
+            box-sizing: border-box; 
+            background: var(--bg); 
+            color: var(--text); 
+            font-weight: 600; 
+            outline: none; 
+        }
+
+        .login-input:focus, select:focus { 
+            border-color: var(--primary); 
+        }
+
+        .btn { 
+            padding: 10px 18px; 
+            border: none; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-weight: 700; 
+            font-size: 0.85rem; 
+            transition: 0.2s; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+
+        .btn-save { 
+            background: var(--primary); 
+            color: white; 
+            width: 100%; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); 
+        }
+
+        .btn-save:hover { 
+            background: var(--primary-dark); 
+        }
+
+        .btn-outline { 
+            background: transparent; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        table.main-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+
+        table.main-table th { 
+            text-align: left; 
+            padding: 12px; 
+            color: #64748b; 
+            font-size: 0.72rem; 
+            border-bottom: 2px solid var(--border); 
+            text-transform: uppercase; 
+            font-weight: 800; 
+        }
+
+        table.main-table td { 
+            padding: 14px 12px; 
+            border-bottom: 1px solid var(--border); 
+            font-size: 0.88rem; 
+        }
+        
+        .tag { 
+            padding: 5px 10px; 
+            border-radius: 8px; 
+            font-size: 0.72rem; 
+            font-weight: 800; 
+            display: inline-block; 
+        }
+
         .tag-hadir { background: #d1fae5; color: #065f46; }
         .tag-lewat { background: #fef3c7; color: #92400e; }
         .tag-tidak { background: #f1f5f9; color: #64748b; }
-        .role-badge { font-size: 0.65rem; background: #e0e7ff; color: #3730a3; padding: 3px 8px; border-radius: 6px; font-weight: 800; margin-left: 6px; text-transform: uppercase; display: inline-block; }
+
+        .role-badge { 
+            font-size: 0.65rem; 
+            background: #e0e7ff; 
+            color: #3730a3; 
+            padding: 3px 8px; 
+            border-radius: 6px; 
+            font-weight: 800; 
+            margin-left: 6px; 
+            text-transform: uppercase; 
+            display: inline-block; 
+        }
         
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .modal-content { background: var(--card); padding: 28px; border-radius: 24px; border: 1px solid var(--border); max-width: 90%; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-        .calendar-day-label { font-size: 0.65rem; text-align: center; font-weight: 800; color: #64748b; padding-bottom: 4px; }
-        .calendar-cell { aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; position: relative; min-width: 38px; }
-        .dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; }
+        .modal-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.6); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+            backdrop-filter: blur(4px); 
+        }
+
+        .modal-content { 
+            background: var(--card); 
+            padding: 28px; 
+            border-radius: 24px; 
+            border: 1px solid var(--border); 
+            max-width: 90%; 
+        }
+
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 6px; 
+        }
+
+        .calendar-day-label { 
+            font-size: 0.65rem; 
+            text-align: center; 
+            font-weight: 800; 
+            color: #64748b; 
+            padding-bottom: 4px; 
+        }
+
+        .calendar-cell { 
+            aspect-ratio: 1; 
+            border-radius: 12px; 
+            border: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.78rem; 
+            font-weight: 700; 
+            position: relative; 
+            min-width: 38px; 
+        }
+
+        .dot { 
+            width: 6px; 
+            height: 6px; 
+            border-radius: 50%; 
+            margin-top: 3px; 
+        }
+
         .dot-hadir { background: var(--success); }
         .dot-lewat { background: var(--warning); }
         .dot-cuti { background: var(--accent); }
         
-        #loginSection { max-width: 380px; margin: 90px auto; text-align: center; background: var(--card); padding: 40px 30px; border-radius: 32px; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); }
-        #regStatus { font-size: 0.75rem; font-weight: 800; text-align: center; margin-top: 6px; color: var(--primary); }
+        #loginSection { 
+            max-width: 380px; 
+            margin: 90px auto; 
+            text-align: center; 
+            background: var(--card); 
+            padding: 40px 30px; 
+            border-radius: 32px; 
+            border: 1px solid var(--border); 
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); 
+        }
+
+        #regStatus { 
+            font-size: 0.75rem; 
+            font-weight: 800; 
+            text-align: center; 
+            margin-top: 6px; 
+            color: var(--primary); 
+        }
 
         @media print {
             body * { visibility: hidden; }
             #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; }
             .no-print { display: none !important; }
         }
     </style>
@@ -148,7 +403,7 @@
 </div>
 
 <div id="loginSection">
-    <img src="ssa.png" alt="Logo" style="width:65px; margin-bottom:15px;">
+    <img src="ssa.png" alt="Logo" style="width:65px; margin-bottom:15px;" onerror="this.style.display='none'">
     <h2 style="justify-content: center; margin-bottom: 25px;">Portal Admin Pelajar</h2>
     <input type="email" id="loginEmail" class="login-input" placeholder="Emel Admin">
     <input type="password" id="loginPass" class="login-input" placeholder="Kata Laluan">
@@ -158,11 +413,11 @@
 <div id="adminContent" style="display:none;">
     <div class="header">
         <div style="display:flex; align-items:center; gap:12px;">
-            <img src="ssa.png" alt="Logo" style="width:36px;">
+            <img src="ssa.png" alt="Logo" style="width:36px;" onerror="this.style.display='none'">
             <span style="font-weight: 800; font-size: 1.1rem; color: var(--text);">E-HADIR <span style="color:var(--primary)">PELAJAR</span></span>
         </div>
         <div style="display:flex; gap:10px;">
-            <button onclick="toggleTheme()" class="btn btn-outline">🌓</button>
+            <button onclick="toggleTheme()" class="btn btn-outline" title="Tukar Mod Cerah/Gelap">🌓</button>
             <button onclick="handleLogout()" class="btn btn-outline" style="color:var(--danger); border-color:#fecdd3;">Log Keluar</button>
         </div>
     </div>
@@ -175,7 +430,7 @@
                 <div id="regStatus">AI SEDIA</div>
                 
                 <input type="text" id="staffName" placeholder="Nama Penuh Pelajar" class="login-input" style="margin-top:10px;">
-		<input type="password" id="studentCode" placeholder="Kod Akses Unik Pelajar (4-6 Digit)" class="login-input" maxlength="6" inputmode="numeric">
+                <input type="password" id="studentCode" placeholder="Kod Akses Unik Pelajar (4-6 Digit)" class="login-input" maxlength="6" inputmode="numeric">
                 
                 <select id="staffRole" class="login-input">
                     <option value="1 CEMERLANG">Kelas: 1 CEMERLANG</option>
@@ -195,33 +450,34 @@
                     <option value="PRA GEMILANG">Kelas: PRA GEMILANG</option>
                 </select>
 
-                <button onclick="register()" class="btn btn-save" style="margin-top: 5px;">SIMPAN IDENTITI (3 SAMPLE)</button>
+                <button onclick="register()" class="btn btn-save" style="margin-top: 5px;">SIMPAN IDENTITI (3 SAMPEL)</button>
             </div>
 
             <div class="card">
                 <h2>🔍 Carian & Tetapan</h2>
                 <label style="font-size:0.72rem; color:#64748b; font-weight:800;">TARIKH REKOD:</label>
                 <input type="date" id="dateFilter" class="login-input" onchange="loadAttendanceForDate()">
-		<!-- PENAPIS KELAS BAHARU -->
-    <label style="font-size:0.72rem; color:#64748b; font-weight:800;">TAPIS MENGIKUT KELAS:</label>
-    <select id="classFilter" class="login-input" onchange="updateDashboard()">
-        <option value="SEMUA">-- SEMUA KELAS --</option>
-        <option value="1 CEMERLANG">1 CEMERLANG</option>
-        <option value="1 GEMILANG">1 GEMILANG</option>
-        <option value="2 CEMERLANG">2 CEMERLANG</option>
-        <option value="2 GEMILANG">2 GEMILANG</option>
-        <option value="3 CEMERLANG">3 CEMERLANG</option>
-        <option value="3 GEMILANG">3 GEMILANG</option>
-        <option value="4 CEMERLANG">4 CEMERLANG</option>
-        <option value="4 GEMILANG">4 GEMILANG</option>
-        <option value="5 CEMERLANG">5 CEMERLANG</option>
-        <option value="5 GEMILANG">5 GEMILANG</option>
-        <option value="6 CEMERLANG">6 CEMERLANG</option>
-        <option value="6 GEMILANG">6 GEMILANG</option>
-        <option value="PPKI">PPKI</option>
-        <option value="PRA CEMERLANG">PRA CEMERLANG</option>
-        <option value="PRA GEMILANG">PRA GEMILANG</option>
-    </select>
+                
+                <label style="font-size:0.72rem; color:#64748b; font-weight:800;">TAPIS MENGIKUT KELAS:</label>
+                <select id="classFilter" class="login-input" onchange="updateDashboard()">
+                    <option value="SEMUA">-- SEMUA KELAS --</option>
+                    <option value="1 CEMERLANG">1 CEMERLANG</option>
+                    <option value="1 GEMILANG">1 GEMILANG</option>
+                    <option value="2 CEMERLANG">2 CEMERLANG</option>
+                    <option value="2 GEMILANG">2 GEMILANG</option>
+                    <option value="3 CEMERLANG">3 CEMERLANG</option>
+                    <option value="3 GEMILANG">3 GEMILANG</option>
+                    <option value="4 CEMERLANG">4 CEMERLANG</option>
+                    <option value="4 GEMILANG">4 GEMILANG</option>
+                    <option value="5 CEMERLANG">5 CEMERLANG</option>
+                    <option value="5 GEMILANG">5 GEMILANG</option>
+                    <option value="6 CEMERLANG">6 CEMERLANG</option>
+                    <option value="6 GEMILANG">6 GEMILANG</option>
+                    <option value="PPKI">PPKI</option>
+                    <option value="PRA CEMERLANG">PRA CEMERLANG</option>
+                    <option value="PRA GEMILANG">PRA GEMILANG</option>
+                </select>
+
                 <input type="text" id="searchName" class="login-input" placeholder="Cari nama murid..." onkeyup="updateDashboard()">
                 <button onclick="exportExcel()" class="btn btn-outline" style="width:100%; margin-top:5px; justify-content:center;">📥 Eksport ke Excel</button>
                 <button onclick="clearAllAttendanceToday()" class="btn btn-outline" style="width:100%; margin-top:10px; justify-content:center; color: var(--danger); border-color: #fecdd3;">🗑️ Padam Rekod Hari Ini</button>
@@ -299,7 +555,7 @@
     async function initAdmin() {
         try {
             await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
             ]);
@@ -317,7 +573,9 @@
             document.getElementById('analysisDate').value = hariIni;
             
             startDataListeners();
-        } catch (err) { console.error("Ralat Kamera:", err); }
+        } catch (err) { 
+            console.error("Ralat Kamera / FaceAPI:", err); 
+        }
     }
 
     function startDataListeners() {
@@ -338,6 +596,7 @@
 
     window.loadAttendanceForDate = () => {
         const filterDate = document.getElementById('dateFilter').value;
+        if (!filterDate) return;
         
         if (unsubscribeAttendance) {
             unsubscribeAttendance();
@@ -372,142 +631,165 @@
     }
 
     window.updateDashboard = () => {
-    const filterDate = document.getElementById('dateFilter').value;
-    const filterClass = document.getElementById('classFilter') ? document.getElementById('classFilter').value : "SEMUA";
-    const search = document.getElementById('searchName').value.toLowerCase();
-    
-    const recordsToday = currentAttendance[filterDate] || [];
-    
-    let countHadir = 0, countLewat = 0, countTotalFiltered = 0;
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = "";
-
-    if (allUsers.length === 0) return;
-
-    allUsers.forEach(user => {
-        const roleDisplay = user.role || "1 CEMERLANG";
+        const filterDate = document.getElementById('dateFilter').value;
+        const filterClass = document.getElementById('classFilter') ? document.getElementById('classFilter').value : "SEMUA";
+        const search = document.getElementById('searchName').value.toLowerCase();
         
-        // 1. Penapis Mengikut Kelas
-        if (filterClass !== "SEMUA" && roleDisplay !== filterClass) return;
+        const recordsToday = currentAttendance[filterDate] || [];
+        
+        let countHadir = 0, countLewat = 0, countTotalFiltered = 0;
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
 
-        // 2. Penapis Mengikut Carian Nama
-        if (search && !user.name.toLowerCase().includes(search)) return;
-
-        countTotalFiltered++;
-
-        const record = recordsToday.find(r => 
-            r.name && r.name.trim().toUpperCase() === user.name.trim().toUpperCase()
-        );
-
-        let statusHTML = `<span class="tag tag-tidak">Tiada Rekod</span>`;
-        let masaHTML = "--:--";
-
-        if (record) {
-            countHadir++;
-            let timeStr = ""; 
-            if (record.timestamp) {
-                const dateObj = record.timestamp.toDate();
-                masaHTML = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-                timeStr = dateObj.toTimeString().substring(0, 5); 
-            }
-            
-            let stat = record.status || "Hadir";
-            let warna = "tag-hadir";
-
-            const isLateByTime = timeStr ? checkIsLate(timeStr) : false;
-            const isLateByText = stat.includes("Lewat");
-
-            if (isLateByText || isLateByTime) {
-                warna = "tag-lewat";
-                countLewat++; 
-            }
-            if (stat.includes("MC") || stat.includes("Cuti") || stat.includes("Bersebab")) {
-                warna = "tag-tidak";
-            }
-
-            statusHTML = `<span class="tag ${warna}">${stat}</span>`;
-        }
-
-        const safeName = user.name.replace(/'/g, "\\'");
-
-        tbody.innerHTML += `
-            <tr>
-                <td>
-                    <div style="font-weight:700; color:var(--text); cursor:pointer;" onclick="openIndividualCalendar('${safeName}')">${user.name}</div>
-                    <span class="role-badge">${roleDisplay}</span>
-                </td>
-                <td>${masaHTML}</td>
-                <td>${statusHTML}</td>
-                <td style="text-align:right;">
-                    <button onclick="openManualModal('${safeName}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;">Edit</button>
-                    <button onclick="resetKehadiranBaris('${safeName}')" style="background:none; border:none; cursor:pointer; margin-left:8px; font-size: 0.95rem;" title="Reset Kehadiran Hari Ini">🔄</button>
-                    <button onclick="confirmDeleteUser('${user.id}', '${safeName}')" style="background:none; border:none; color:var(--danger); cursor:pointer; margin-left:8px; font-size: 0.95rem;" title="Padam Akaun Pelajar">🗑️</button>
-                </td>
-            </tr>`;
-    });
-
-    // Kemaskini paparan kad statistik mengikut senarai yang ditapis
-    document.getElementById('statTotal').innerText = countTotalFiltered;
-    document.getElementById('statPresent').innerText = countHadir;
-    document.getElementById('statLate').innerText = countLewat;
-    document.getElementById('statAbsent').innerText = countTotalFiltered - countHadir;
-};
-
-    window.register = async () => {
-    const nameInput = document.getElementById('staffName');
-    const roleInput = document.getElementById('staffRole');
-    const codeInput = document.getElementById('studentCode');
-    
-    const name = nameInput.value.trim().toUpperCase();
-    const role = roleInput.value; 
-    const code = codeInput.value.trim();
-
-    if (!name) return alert("Sila masukkan nama pelajar!");
-    if (!code) return alert("Sila masukkan Kod Akses Individu pelajar!");
-
-    const statusLabel = document.getElementById('regStatus');
-    const video = document.getElementById('adminVideo');
-    let descriptors = [];
-
-    for (let i = 1; i <= 3; i++) {
-        statusLabel.innerText = `⌛ SAMPEL ${i}/3... AMBIL GAMBAR`;
-        statusLabel.style.color = "var(--warning)";
-        await new Promise(r => setTimeout(r, 1000));
-
-        const det = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
-            .withFaceLandmarks().withFaceDescriptor();
-
-        if (det) {
-            descriptors.push({ d: Array.from(det.descriptor) });
-        } else {
-            alert(`Sampel ${i} gagal. Pastikan murid berhadapan dengan kamera.`);
-            statusLabel.innerText = "AI SEDIA";
+        if (allUsers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#64748b;">Tiada rekod pelajar berdaftar.</td></tr>`;
+            document.getElementById('statTotal').innerText = "0";
+            document.getElementById('statPresent').innerText = "0";
+            document.getElementById('statLate').innerText = "0";
+            document.getElementById('statAbsent').innerText = "0";
             return;
         }
-    }
 
-    try {
-        const q = query(collection(db, "users"), where("name", "==", name));
-        const snap = await getDocs(q);
-        
-        if (!snap.empty) {
-            if(confirm(`Kemaskini sampel wajah dan kod akses pelajar ${name}?`)) {
-                await updateDoc(doc(db, "users", snap.docs[0].id), { descriptors, role: role, code: code });
-                alert("Berjaya dikemaskini!");
+        allUsers.forEach(user => {
+            const roleDisplay = user.role || "1 CEMERLANG";
+            
+            // 1. Penapis Mengikut Kelas
+            if (filterClass !== "SEMUA" && roleDisplay !== filterClass) return;
+
+            // 2. Penapis Mengikut Carian Nama
+            if (search && !user.name.toLowerCase().includes(search)) return;
+
+            countTotalFiltered++;
+
+            const record = recordsToday.find(r => 
+                r.name && r.name.trim().toUpperCase() === user.name.trim().toUpperCase()
+            );
+
+            let statusHTML = `<span class="tag tag-tidak">Tiada Rekod</span>`;
+            let masaHTML = "--:--";
+
+            if (record) {
+                countHadir++;
+                let timeStr = ""; 
+                if (record.timestamp) {
+                    const dateObj = record.timestamp.toDate();
+                    masaHTML = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    timeStr = dateObj.toTimeString().substring(0, 5); 
+                }
+                
+                let stat = record.status || "Hadir";
+                let warna = "tag-hadir";
+
+                const isLateByTime = timeStr ? checkIsLate(timeStr) : false;
+                const isLateByText = stat.includes("Lewat");
+
+                if (stat.includes("MC") || stat.includes("Cuti") || stat.includes("Bersebab") || stat.includes("Khas")) {
+                    warna = "tag-tidak";
+                } else if (isLateByText || isLateByTime) {
+                    warna = "tag-lewat";
+                    countLewat++; 
+                }
+
+                statusHTML = `<span class="tag ${warna}">${stat}</span>`;
             }
-        } else {
-            await addDoc(collection(db, "users"), { name, descriptors, role: role, code: code });
-            alert("Pendaftaran murid berjaya!");
+
+            const safeName = user.name.replace(/'/g, "\\'");
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div style="font-weight:700; color:var(--text); cursor:pointer;" onclick="openIndividualCalendar('${safeName}')" title="Klik untuk lihat kalendar individu">${user.name}</div>
+                        <span class="role-badge">${roleDisplay}</span>
+                    </td>
+                    <td>${masaHTML}</td>
+                    <td>${statusHTML}</td>
+                    <td style="text-align:right;">
+                        <button onclick="openManualModal('${safeName}')" class="btn btn-outline" style="padding:4px 8px; font-size:0.75rem;">Edit</button>
+                        <button onclick="resetKehadiranBaris('${safeName}')" style="background:none; border:none; cursor:pointer; margin-left:8px; font-size: 0.95rem;" title="Reset Kehadiran Hari Ini">🔄</button>
+                        <button onclick="confirmDeleteUser('${user.id}', '${safeName}')" style="background:none; border:none; color:var(--danger); cursor:pointer; margin-left:8px; font-size: 0.95rem;" title="Padam Akaun Pelajar">🗑️</button>
+                    </td>
+                </tr>`;
+        });
+
+        // Kemaskini paparan kad statistik
+        document.getElementById('statTotal').innerText = countTotalFiltered;
+        document.getElementById('statPresent').innerText = countHadir;
+        document.getElementById('statLate').innerText = countLewat;
+        document.getElementById('statAbsent').innerText = countTotalFiltered - countHadir;
+    };
+
+    window.register = async () => {
+        const nameInput = document.getElementById('staffName');
+        const roleInput = document.getElementById('staffRole');
+        const codeInput = document.getElementById('studentCode');
+        
+        const name = nameInput.value.trim().toUpperCase();
+        const role = roleInput.value; 
+        const code = codeInput.value.trim();
+
+        if (!name) return alert("Sila masukkan nama pelajar!");
+        if (!code) return alert("Sila masukkan Kod Akses Unik pelajar!");
+
+        const statusLabel = document.getElementById('regStatus');
+        const video = document.getElementById('adminVideo');
+        let descriptors = [];
+
+        // Tetapan Panduan 3 Sudut Tangkapan Wajah
+        const angles = [
+            { title: "DEPAN", instruction: "1/3: PANDANG LURUS KE KAMERA" },
+            { title: "KIRI 15°", instruction: "2/3: PUSING KEPALA KE KIRI SEDIKIT (15°)" },
+            { title: "KANAN 15°", instruction: "3/3: PUSING KEPALA KE KANAN SEDIKIT (15°)" }
+        ];
+
+        for (let i = 0; i < angles.length; i++) {
+            const step = angles[i];
+            
+            // Papar arahan sudut kepada pengguna dan berikan masa 2 saat untuk tukar posisi
+            statusLabel.innerText = `⌛ ${step.instruction}... BERSEDIA!`;
+            statusLabel.style.color = "var(--warning)";
+            await new Promise(r => setTimeout(r, 2000));
+
+            statusLabel.innerText = `📸 MENGIMBAS (${step.title})... JANGAN BERGERAK`;
+            
+            // Pengesanan menggunakan SsdMobilenetv1Options
+            const det = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                .withFaceLandmarks().withFaceDescriptor();
+
+            if (det) {
+                descriptors.push({ d: Array.from(det.descriptor) });
+                statusLabel.innerText = `✅ SAMPEL ${step.title} BERJAYA!`;
+                statusLabel.style.color = "var(--success)";
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                alert(`Gagal mengesan wajah bagi Sampel ${step.title}. Sila pastikan pencahayaan cukup dan wajah berada di dalam petak kamera.`);
+                statusLabel.innerText = "AI SEDIA";
+                statusLabel.style.color = "var(--primary)";
+                return;
+            }
         }
+
+        try {
+            const q = query(collection(db, "users"), where("name", "==", name));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+                if(confirm(`Kemaskini sampel wajah dan kod akses pelajar ${name}?`)) {
+                    await updateDoc(doc(db, "users", snap.docs[0].id), { descriptors, role: role, code: code });
+                    alert("Rekod murid berjaya dikemaskini!");
+                }
+            } else {
+                await addDoc(collection(db, "users"), { name, descriptors, role: role, code: code });
+                alert("Pendaftaran murid berjaya!");
+            }
+            
+            nameInput.value = "";
+            codeInput.value = "";
+            
+        } catch (e) { alert("Ralat Simpan: " + e.message); }
         
-        nameInput.value = "";
-        codeInput.value = "";
-        
-    } catch (e) { alert("Ralat Simpan: " + e.message); }
-    
-    statusLabel.innerText = "AI SEDIA";
-    statusLabel.style.color = "var(--primary)";
-};
+        statusLabel.innerText = "AI SEDIA";
+        statusLabel.style.color = "var(--primary)";
+    };
 
     window.resetKehadiranBaris = async (namaPelajar) => {
         if (!confirm(`Adakah anda mahu memadam rekod kehadiran ${namaPelajar} untuk tarikh ini?`)) return;
@@ -642,7 +924,7 @@
         const dateStr = d.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
         printDate.innerText = "Tarikh: " + dateStr;
-        printTime.innerText = new Date().toLocaleString();
+        printTime.innerText = new Date().toLocaleString('ms-MY');
         printArea.innerHTML = window.currentAnalysisHTML;
 
         window.print();
@@ -782,19 +1064,27 @@
     }
 
     window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+    
     window.toggleTheme = () => {
         const current = document.body.getAttribute('data-theme');
-        document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+        document.body.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
     };
+
     window.exportExcel = () => {
         const table = document.getElementById("reportTable");
         XLSX.writeFile(XLSX.utils.table_to_book(table), `Laporan_Kehadiran_Pelajar.xlsx`);
     };
+
     window.handleLogin = async () => { 
         const email = document.getElementById('loginEmail').value;
         const pass = document.getElementById('loginPass').value;
-        try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { alert("Log Masuk Gagal!"); } 
+        try { 
+            await signInWithEmailAndPassword(auth, email, pass); 
+        } catch(e) { 
+            alert("Log Masuk Gagal! Sila semak emel dan kata laluan anda."); 
+        } 
     };
+
     window.handleLogout = () => signOut(auth);
 
     onAuthStateChanged(auth, u => {
