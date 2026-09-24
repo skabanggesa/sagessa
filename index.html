@@ -1,401 +1,449 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="ms" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kiosk Imbasan | E-Hadir Pelajar</title>
+    <title>E-Hadir Pelajar | Portal Kiosk & Pentadbir</title>
     
-    <!-- Face API & Firebase libraries -->
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eeeefd',
+                            100: '#e0e0fc',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Face API & SheetJS Libraries -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --accent: #06b6d4;
-            --danger: #f43f5e;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --bg: #0f172a;
-            --card: #1e293b;
-            --text: #f8fafc;
-            --border: #334155;
-        }
-
-        [data-theme="light"] {
-            --primary: #4f46e5;
-            --primary-dark: #3730a3;
-            --bg: #f1f5f9;
-            --card: #ffffff;
-            --text: #0f172a;
-            --border: #e2e8f0;
-        }
-
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: var(--bg); 
-            margin: 0; 
-            color: var(--text); 
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            transition: background-color 0.3s, color 0.3s; 
         }
 
-        .header { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            background: var(--card); 
-            padding: 16px 5%; 
-            border-bottom: 2px solid var(--border); 
-            position: sticky; 
-            top: 0; 
-            z-index: 100; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
-        }
-
-        .clock-badge {
-            background: rgba(99, 102, 241, 0.15);
-            color: var(--primary);
-            padding: 8px 16px;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 0.95rem;
-            border: 1px solid var(--primary);
-        }
-
-        .main-container { 
-            padding: 25px 5%; 
-            display: grid; 
-            grid-template-columns: 1fr; 
-            gap: 25px; 
-            flex: 1;
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 90%;
-        }
-
-        @media (min-width: 992px) { 
-            .main-container { 
-                grid-template-columns: 1.2fr 0.8fr; 
-            } 
-        }
-
-        .card { 
-            background: var(--card); 
-            padding: 24px; 
-            border-radius: 24px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03); 
-            border: 1px solid var(--border); 
-            display: flex;
-            flex-direction: column;
-        }
-
-        h2 { 
-            font-size: 1.1rem; 
-            margin-top: 0; 
-            margin-bottom: 18px; 
-            font-weight: 800; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            color: var(--primary); 
-        }
-
-        .video-container {
-            position: relative;
-            width: 100%;
-            border-radius: 20px;
-            overflow: hidden;
-            background: #000;
-            border: 3px solid var(--border);
-            aspect-ratio: 4/3;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        video { 
-            width: 100%; 
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); 
-        }
-
-        canvas.overlay {
+        /* Scanner HUD Laser Effect */
+        .scan-laser {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transform: scaleX(-1);
+            left: 5%;
+            right: 5%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #6366f1, #06b6d4, transparent);
+            box-shadow: 0 0 15px #6366f1;
+            animation: scanAnim 2.8s infinite ease-in-out;
             pointer-events: none;
         }
 
-        .scanner-frame {
-            position: absolute;
-            inset: 20px;
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            pointer-events: none;
-            box-sizing: border-box;
+        @keyframes scanAnim {
+            0% { top: 8%; opacity: 0.3; }
+            50% { top: 88%; opacity: 1; }
+            100% { top: 8%; opacity: 0.3; }
         }
 
-        .scan-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, var(--primary), transparent);
-            box-shadow: 0 0 15px var(--primary);
-            animation: scan 2.5s infinite ease-in-out;
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        @keyframes scan {
-            0% { top: 5%; opacity: 0.2; }
-            50% { top: 90%; opacity: 1; }
-            100% { top: 5%; opacity: 0.2; }
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(0, 0, 0, 0.08);
         }
 
-        .status-box {
-            margin-top: 15px;
-            padding: 14px 18px;
-            border-radius: 14px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            text-align: center;
-            font-weight: 800;
-            font-size: 0.95rem;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 99px;
         }
 
-        .login-input { 
-            width: 100%; 
-            padding: 14px; 
-            margin: 8px 0 16px 0; 
-            border: 1px solid var(--border); 
-            border-radius: 14px; 
-            box-sizing: border-box; 
-            background: var(--bg); 
-            color: var(--text); 
-            font-weight: 700; 
-            outline: none; 
-            font-size: 1.1rem;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-
-        .login-input:focus { 
-            border-color: var(--primary); 
-        }
-
-        .btn { 
-            padding: 12px 20px; 
-            border: none; 
-            border-radius: 14px; 
-            cursor: pointer; 
-            font-weight: 700; 
-            font-size: 0.9rem; 
-            transition: 0.2s; 
-            display: inline-flex; 
-            align-items: center; 
-            justify-content: center;
-            gap: 8px; 
-            text-decoration: none;
-        }
-
-        .btn-save { 
-            background: var(--primary); 
-            color: white; 
-            width: 100%; 
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25); 
-        }
-
-        .btn-save:hover { 
-            background: var(--primary-dark); 
-        }
-
-        .btn-outline { 
-            background: transparent; 
-            border: 1px solid var(--border); 
-            color: var(--text); 
-        }
-
-        .btn-outline:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .recent-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 380px;
-            overflow-y: auto;
-        }
-
-        .recent-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--bg);
-            padding: 12px 16px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .tag { 
-            padding: 5px 12px; 
-            border-radius: 8px; 
-            font-size: 0.72rem; 
-            font-weight: 800; 
-            display: inline-block; 
-        }
-
-        .tag-hadir { background: #d1fae5; color: #065f46; }
-        .tag-lewat { background: #fef3c7; color: #92400e; }
-
-        /* Modal Pengesahan Toast */
-        .toast-modal {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            background: var(--card);
-            border: 2px solid var(--success);
-            border-radius: 20px;
-            padding: 20px 25px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            display: none;
-            align-items: center;
-            gap: 15px;
-            max-width: 380px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .toast-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 800;
-        }
-
-        .custom-alert {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--card);
-            border: 1px solid var(--border);
-            padding: 12px 24px;
-            border-radius: 30px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 10000;
-            font-weight: 700;
-            font-size: 0.9rem;
+        /* Print formatting */
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-950 dark:bg-slate-950 text-slate-100 min-h-screen flex flex-direction-column transition-colors duration-300">
 
-<div class="header">
-    <div style="display:flex; align-items:center; gap:12px;">
-        <img src="ssa.png" alt="Logo" style="width:36px;" onerror="this.style.display='none'">
-        <span style="font-weight: 800; font-size: 1.1rem; color: var(--text);">
-            E-HADIR <span style="color:var(--primary)">PELAJAR</span>
-        </span>
-    </div>
-    
-    <div class="clock-badge" id="liveClock">00:00:00 AM</div>
+<div class="w-full flex flex-col flex-grow">
+    <!-- Main Header Bar -->
+    <header class="sticky top-0 z-50 bg-slate-900/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-500/30">
+                🎓
+            </div>
+            <div>
+                <h1 class="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+                    E-HADIR <span class="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">PELAJAR</span>
+                </h1>
+                <p class="text-xs text-slate-400 font-medium hidden sm:block">Sistem Pengesanan Wajah & Pengurusan Kehadiran Kiosk</p>
+            </div>
+        </div>
 
-    <div style="display:flex; gap:10px;">
-        <button onclick="toggleTheme()" class="btn btn-outline" title="Tukar Mod Cerah/Gelap">🌓</button>
-        <a href="admin.html" class="btn btn-outline" style="font-size: 0.8rem;">⚙️ Admin</a>
-    </div>
+        <!-- Center View Switcher Tabs -->
+        <div class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+            <button id="tabKiosk" onclick="switchView('kiosk')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-indigo-600 text-white shadow-md">
+                📸 Kiosk Imbasan
+            </button>
+            <button id="tabAdmin" onclick="switchView('admin')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-white">
+                ⚙️ Portal Admin
+            </button>
+        </div>
+
+        <!-- Right Side Utilities -->
+        <div class="flex items-center space-x-3">
+            <div id="liveClock" class="hidden md:flex items-center px-3.5 py-1.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-bold tracking-wider">
+                00:00:00 AM
+            </div>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 transition" title="Tukar Tema">
+                🌓
+            </button>
+        </div>
+    </header>
+
+    <!-- VIEW 1: KIOSK IMBASAN WAJAH -->
+    <main id="viewKiosk" class="p-4 md:p-8 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        <!-- Left: Camera Scanner Frame -->
+        <div class="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4">
+            <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-2xl relative flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-bold text-indigo-400 flex items-center gap-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Kamera Pengesanan Imbasan Wajah AI
+                    </h2>
+                    <span id="aiBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        Memuatkan Model AI...
+                    </span>
+                </div>
+
+                <!-- Video Frame -->
+                <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-inner flex items-center justify-center">
+                    <video id="videoFeed" class="w-full h-full object-cover scale-x-[-1]" autoplay muted playsinline></video>
+                    <canvas id="overlayCanvas" class="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none"></canvas>
+                    
+                    <!-- Futuristic HUD Overlay -->
+                    <div class="absolute inset-4 border border-indigo-500/20 rounded-xl pointer-events-none"></div>
+                    <div class="scan-laser"></div>
+                    
+                    <!-- HUD Corners -->
+                    <div class="absolute top-6 left-6 w-6 h-6 border-t-2 border-l-2 border-indigo-400 rounded-tl-lg"></div>
+                    <div class="absolute top-6 right-6 w-6 h-6 border-t-2 border-r-2 border-indigo-400 rounded-tr-lg"></div>
+                    <div class="absolute bottom-6 left-6 w-6 h-6 border-b-2 border-l-2 border-indigo-400 rounded-bl-lg"></div>
+                    <div class="absolute bottom-6 right-6 w-6 h-6 border-b-2 border-r-2 border-indigo-400 rounded-br-lg"></div>
+                </div>
+
+                <!-- Status Banner -->
+                <div id="kioskStatus" class="mt-4 p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center text-xs font-bold text-slate-300 flex items-center justify-center gap-2">
+                    <span class="animate-spin text-indigo-400">⏳</span> Memuatkan enjin AI... Sila berikan kebenaran kamera.
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Manual Entry & Live Scan List -->
+        <div class="lg:col-span-5 xl:col-span-4 flex flex-col space-y-6">
+            <!-- Alternative Manual Access Code -->
+            <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl">
+                <h3 class="text-sm font-bold text-slate-200 mb-1 flex items-center gap-2">
+                    <span>🔢</span> Imbasan Manual (Kod Akses 4-6 Digit)
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">Gunakan Kod Akses Murid jika kamera terhalang atau gagal imbasan.</p>
+                <div class="flex gap-2">
+                    <input type="password" id="manualPinInput" maxlength="6" inputmode="numeric" placeholder="SILA MASUKKAN KOD" class="flex-grow bg-slate-900 border border-slate-700 focus:border-indigo-500 text-center font-mono text-base font-bold tracking-widest text-white rounded-xl px-4 py-2.5 outline-none transition">
+                    <button onclick="submitManualPin()" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                        Sahkan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Logged Attendance Today -->
+            <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl flex-grow flex flex-col min-h-[320px]">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <span>📋</span> Rekod Terkini Sesi Hari Ini
+                    </h3>
+                    <span id="todayCountBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        0 Murid
+                    </span>
+                </div>
+                
+                <div class="overflow-y-auto flex-grow max-h-[360px] pr-1">
+                    <ul id="kioskRecentList" class="space-y-2.5">
+                        <li class="text-center text-xs text-slate-500 py-10 font-medium">Belum ada rekod imbasan hari ini.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- VIEW 2: PORTAL PENTADBIR (ADMIN) -->
+    <main id="viewAdmin" class="p-4 md:p-8 max-w-7xl mx-auto w-full hidden space-y-6">
+        <!-- Admin Header / Authentication Bar -->
+        <div id="adminAuthGate" class="glass-panel p-8 max-w-md mx-auto rounded-3xl border border-slate-800 text-center shadow-2xl my-12">
+            <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-3xl mx-auto mb-4">
+                🔐
+            </div>
+            <h2 class="text-lg font-extrabold text-white mb-2">Akses Portal Pentadbir</h2>
+            <p class="text-xs text-slate-400 mb-6">Sila log masuk menggunakan kredo Pentadbir sekolah untuk menguruskan data murid.</p>
+            <div class="space-y-3">
+                <input type="email" id="loginEmail" placeholder="Emel Pentadbir" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-semibold rounded-xl px-4 py-3 outline-none">
+                <input type="password" id="loginPass" placeholder="Kata Laluan" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-semibold rounded-xl px-4 py-3 outline-none">
+                <button onclick="handleAdminLogin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                    Log Masuk Portal
+                </button>
+            </div>
+        </div>
+
+        <!-- Authenticated Admin Dashboard -->
+        <div id="adminDashboard" class="hidden space-y-6">
+            <!-- Stats Top Row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="glass-panel p-4 rounded-2xl border border-slate-800 text-center">
+                    <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Jumlah Pelajar</p>
+                    <h3 id="statTotal" class="text-2xl font-extrabold text-indigo-400 mt-1">0</h3>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl border border-slate-800 text-center">
+                    <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Hadir Tepat</p>
+                    <h3 id="statPresent" class="text-2xl font-extrabold text-emerald-400 mt-1">0</h3>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl border border-slate-800 text-center">
+                    <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Hadir Lewat</p>
+                    <h3 id="statLate" class="text-2xl font-extrabold text-amber-400 mt-1">0</h3>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl border border-slate-800 text-center">
+                    <p class="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Tidak Hadir</p>
+                    <h3 id="statAbsent" class="text-2xl font-extrabold text-rose-400 mt-1">0</h3>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left Column: Registration Wizard -->
+                <div class="lg:col-span-5 space-y-6">
+                    <!-- Student Face Registration Panel -->
+                    <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl">
+                        <h3 class="text-sm font-bold text-indigo-400 mb-3 flex items-center gap-2">
+                            <span>🎓</span> Daftar Pelajar Baru (3 Sampel Wajah)
+                        </h3>
+                        
+                        <div class="relative aspect-[4/3] bg-black rounded-2xl overflow-hidden border border-slate-700 mb-3 flex items-center justify-center">
+                            <video id="adminCamVideo" autoplay muted playsinline class="w-full h-full object-cover scale-x-[-1]"></video>
+                            <div id="regGuideBox" class="absolute inset-0 border-2 border-dashed border-indigo-400/60 rounded-2xl pointer-events-none flex items-center justify-center">
+                                <span class="bg-slate-900/80 px-3 py-1 rounded-full text-[10px] font-bold text-indigo-300 border border-indigo-500/40">
+                                    Posisikan Wajah Di Tengah
+                                </span>
+                            </div>
+                        </div>
+
+                        <div id="regStatusLabel" class="text-center text-xs font-bold text-emerald-400 mb-3">
+                            AI Kamera Sedia
+                        </div>
+
+                        <div class="space-y-3">
+                            <input type="text" id="regName" placeholder="NAMA PENUH PELAJAR" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none uppercase">
+                            <input type="password" id="regCode" maxlength="6" inputmode="numeric" placeholder="KOD AKSES UNIK (4-6 DIGIT)" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none">
+                            
+                            <select id="regClass" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-bold rounded-xl px-3.5 py-2.5 outline-none">
+                                <option value="1 CEMERLANG">Kelas: 1 CEMERLANG</option>
+                                <option value="1 GEMILANG">Kelas: 1 GEMILANG</option>
+                                <option value="2 CEMERLANG">Kelas: 2 CEMERLANG</option>
+                                <option value="2 GEMILANG">Kelas: 2 GEMILANG</option>
+                                <option value="3 CEMERLANG">Kelas: 3 CEMERLANG</option>
+                                <option value="3 GEMILANG">Kelas: 3 GEMILANG</option>
+                                <option value="4 CEMERLANG">Kelas: 4 CEMERLANG</option>
+                                <option value="4 GEMILANG">Kelas: 4 GEMILANG</option>
+                                <option value="5 CEMERLANG">Kelas: 5 CEMERLANG</option>
+                                <option value="5 GEMILANG">Kelas: 5 GEMILANG</option>
+                                <option value="6 CEMERLANG">Kelas: 6 CEMERLANG</option>
+                                <option value="6 GEMILANG">Kelas: 6 GEMILANG</option>
+                                <option value="PPKI">Kelas: PPKI</option>
+                                <option value="PRA CEMERLANG">Kelas: PRA CEMERLANG</option>
+                                <option value="PRA GEMILANG">Kelas: PRA GEMILANG</option>
+                            </select>
+
+                            <button onclick="registerStudentFaces()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition">
+                                TANGKAP 3 SAMPEL & SIMPAN
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Controls Card -->
+                    <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl space-y-3">
+                        <h3 class="text-sm font-bold text-slate-200">🔍 Penapis & Export</h3>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Tarikh Rekod:</label>
+                            <input type="date" id="adminDateFilter" onchange="fetchAttendanceData()" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 outline-none mt-1">
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Tapis Mengikut Kelas:</label>
+                            <select id="adminClassFilter" onchange="renderAdminTable()" class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 outline-none mt-1">
+                                <option value="SEMUA">-- SEMUA KELAS --</option>
+                                <option value="1 CEMERLANG">1 CEMERLANG</option>
+                                <option value="1 GEMILANG">1 GEMILANG</option>
+                                <option value="2 CEMERLANG">2 CEMERLANG</option>
+                                <option value="2 GEMILANG">2 GEMILANG</option>
+                                <option value="3 CEMERLANG">3 CEMERLANG</option>
+                                <option value="3 GEMILANG">3 GEMILANG</option>
+                                <option value="4 CEMERLANG">4 CEMERLANG</option>
+                                <option value="4 GEMILANG">4 GEMILANG</option>
+                                <option value="5 CEMERLANG">5 CEMERLANG</option>
+                                <option value="5 GEMILANG">5 GEMILANG</option>
+                                <option value="6 CEMERLANG">6 CEMERLANG</option>
+                                <option value="6 GEMILANG">6 GEMILANG</option>
+                                <option value="PPKI">PPKI</option>
+                                <option value="PRA CEMERLANG">PRA CEMERLANG</option>
+                                <option value="PRA GEMILANG">PRA GEMILANG</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <input type="text" id="adminSearchInput" onkeyup="renderAdminTable()" placeholder="Cari Nama Pelajar..." class="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 text-slate-200 text-xs font-semibold rounded-xl px-3 py-2 outline-none">
+                        </div>
+
+                        <div class="pt-2 flex gap-2">
+                            <button onclick="exportToExcel()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs py-2 rounded-xl transition">
+                                📥 Eksport Excel
+                            </button>
+                            <button onclick="promptClearTodayAttendance()" class="bg-rose-900/40 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 font-bold text-xs px-3 py-2 rounded-xl transition">
+                                🗑️ Padam Hari Ini
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Analytics & Student Attendance Table -->
+                <div class="lg:col-span-7 space-y-6">
+                    <!-- Analytical Summary Box -->
+                    <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-bold text-indigo-400">📊 Laporan & Analisis Peratusan</h3>
+                            <button onclick="generateAndPrintAnalysis()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow transition">
+                                🖨️ Cetak Analisis
+                            </button>
+                        </div>
+                        <div id="analyticsContent" class="text-xs text-slate-300">
+                            <p class="text-center py-4 text-slate-500">Pilih tarikh dan klik Jana untuk menganalisis data.</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Student List Table -->
+                    <div class="glass-panel p-5 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                        <h3 class="text-sm font-bold text-slate-200 mb-3">📋 Senarai Rekod Kehadiran (A-Z)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px] font-extrabold">
+                                        <th class="pb-2">Nama & Kelas</th>
+                                        <th class="pb-2">Masa Imbasan</th>
+                                        <th class="pb-2">Status</th>
+                                        <th class="pb-2 text-right">Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTableBody" class="divide-y divide-slate-800/60 font-medium">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
 
-<div class="main-container">
-    <!-- Kad Utama Imbasan Wajah -->
-    <div class="card">
-        <h2>📸 Kiosk Imbasan Wajah</h2>
-        
-        <div class="video-container">
-            <video id="videoFeed" autoplay muted playsinline></video>
-            <canvas id="overlayCanvas" class="overlay"></canvas>
-            <div class="scanner-frame"></div>
-            <div class="scan-line"></div>
-        </div>
-
-        <div id="statusLabel" class="status-box">
-            <span>⌛ Memuatkan Model AI... Sila tunggu.</span>
-        </div>
+<!-- Toast Notification Overlay -->
+<div id="toastNotification" class="fixed top-20 right-5 z-[999] glass-panel border-2 border-emerald-500 rounded-2xl p-4 shadow-2xl flex items-center space-x-4 max-w-sm hidden transition-all transform duration-300 translate-x-full">
+    <div id="toastAvatar" class="w-12 h-12 rounded-full bg-emerald-500 text-white font-black text-lg flex items-center justify-center shrink-0">
+        🎓
     </div>
-
-    <!-- Kad Imbasan Manual & Kehadiran Terkini -->
-    <div style="display: flex; flex-direction: column; gap: 25px;">
-        <!-- Alternatif Kod Akses -->
-        <div class="card">
-            <h2>🔢 Imbasan Manual (Kod Akses)</h2>
-            <p style="font-size: 0.8rem; color: #64748b; margin:-10px 0 10px 0;">Gunakan Kod 4-6 Digit Pelajar jika imbasan muka gagal.</p>
-            <input type="password" id="studentPinInput" class="login-input" placeholder="Masukkan Kod Akses" maxlength="6" inputmode="numeric">
-            <button onclick="submitManualCode()" class="btn btn-save">Sahkan Kehadiran</button>
-        </div>
-
-        <!-- Rekod Kehadiran Terkini Hari Ini -->
-        <div class="card" style="flex:1;">
-            <h2>📋 Kehadiran Terkini Sesi Ini</h2>
-            <ul id="recentAttendanceList" class="recent-list">
-                <li style="text-align: center; color: #64748b; padding: 20px; font-size: 0.85rem;">Belum ada imbasan terkini.</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Notifikasi Segera -->
-<div id="toastNotification" class="toast-modal">
-    <div class="toast-avatar" id="toastAvatar">🎓</div>
     <div>
-        <div style="font-size:0.75rem; color:#64748b; font-weight:800; text-transform:uppercase;">KEHADIRAN DICATAT</div>
-        <div id="toastName" style="font-size:1rem; font-weight:800; color:var(--text); margin:2px 0;">Nama Pelajar</div>
-        <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
-            <span id="toastTag" class="tag tag-hadir">Hadir</span>
-            <span id="toastTime" style="font-size:0.78rem; font-weight:700; color:#64748b;">00:00 AM</span>
+        <p class="text-[10px] font-extrabold uppercase text-emerald-400 tracking-wider">KEHADIRAN DICATAT</p>
+        <h4 id="toastName" class="text-sm font-extrabold text-white">Nama Pelajar</h4>
+        <div class="flex items-center space-x-2 mt-1">
+            <span id="toastTag" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hadir</span>
+            <span id="toastTime" class="text-xs font-bold text-slate-400">00:00 AM</span>
         </div>
     </div>
 </div>
 
-<div id="customAlert" class="custom-alert"></div>
+<!-- Custom Modal Box (Replaces alert/confirm) -->
+<div id="customModal" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <h3 id="modalTitle" class="text-base font-bold text-indigo-400">Notifikasi</h3>
+        <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed"></p>
+        <div id="modalCustomInputArea" class="hidden">
+            <input type="password" id="modalInputPin" maxlength="6" placeholder="Masukkan PIN Admin" class="w-full bg-slate-950 border border-slate-700 text-center font-mono text-base font-bold py-2.5 rounded-xl text-white outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+            <button id="modalCancelBtn" onclick="closeCustomModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                Batal
+            </button>
+            <button id="modalConfirmBtn" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg">
+                Sahkan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Calendar Modal for Individual Student -->
+<div id="calendarModal" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h3 id="calStudentName" class="text-sm font-bold text-indigo-400">Nama Pelajar</h3>
+                <p id="calMonthYear" class="text-xs text-slate-400">Bulan Tahun</p>
+            </div>
+            <div class="flex items-center space-x-1">
+                <button onclick="prevCalMonth()" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold">←</button>
+                <button onclick="nextCalMonth()" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold">→</button>
+                <button onclick="closeCustomModal('calendarModal')" class="p-1.5 rounded-lg bg-rose-900/50 text-rose-300 hover:bg-rose-900 text-xs font-bold ml-2">X</button>
+            </div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 text-center text-xs"></div>
+    </div>
+</div>
+
+<!-- Hidden Print Template Section -->
+<div id="printSection" class="hidden">
+    <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px;">
+        <h2 style="margin:0; font-size:1.4rem; text-transform:uppercase;">Laporan Kehadiran Pelajar</h2>
+        <p id="printDateTitle" style="margin:4px 0 0 0; font-size:0.9rem; font-weight:bold;">Tarikh: -</p>
+    </div>
+    <div id="printBody"></div>
+</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, deleteDoc, doc, getDocs, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyD834R5Au1ksM0h-G0imluipJIN1br2g2g",
@@ -408,40 +456,33 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
     const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models/';
-    const LATE_TIME_THRESHOLD = "07:10"; // Waktu lewat pelajar
+    const LATE_THRESHOLD = "07:10";
+    const ADMIN_PIN = "1234";
 
     let faceMatcher = null;
     let allStudents = [];
-    let recentLogged = new Map(); // Untuk elak pengulangan imbasan dalam masa singkat (cooldown 30s)
+    let currentAttendanceList = [];
+    let recentLoggedMap = new Map();
     let isProcessingScan = false;
+    let currentView = 'kiosk';
+    let calDate = new Date();
+    let activeCalStudent = '';
 
-    function startClock() {
-        setInterval(() => {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-            document.getElementById('liveClock').innerText = timeStr;
-        }, 1000);
-    }
-    startClock();
-
-    window.toggleTheme = () => {
-        const current = document.body.getAttribute('data-theme');
-        document.body.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
-    };
-
-    function showAlert(msg) {
-        const alertBox = document.getElementById('customAlert');
-        alertBox.innerText = msg;
-        alertBox.style.display = 'block';
-        setTimeout(() => { alertBox.style.display = 'none'; }, 3000);
-    }
+    // Clock Runner
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('liveClock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    }, 1000);
 
     async function initKiosk() {
-        const statusLabel = document.getElementById('statusLabel');
+        const kioskStatus = document.getElementById('kioskStatus');
+        const aiBadge = document.getElementById('aiBadge');
+
         try {
-            statusLabel.innerHTML = '<span>⏳ Memuatkan Enjin AI Pengesanan Wajah...</span>';
+            kioskStatus.innerHTML = '<span class="animate-spin text-indigo-400">⌛</span> Memuatkan enjin neural pengecaman wajah...';
             
             await Promise.all([
                 faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -449,22 +490,25 @@
                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
             ]);
 
-            statusLabel.innerHTML = '<span>🔄 Menyambung pangkalan data pelajar...</span>';
+            kioskStatus.innerHTML = '<span class="text-emerald-400">✅</span> AI dimuatkan. Menyambung data pelajar...';
             
-            // Listen to student database
+            // Firebase realtime student data listener
             onSnapshot(collection(db, "users"), (snap) => {
                 allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 buildFaceMatcher();
+                renderAdminTable();
             });
 
-            // Listen to recent attendance today
-            listenRecentAttendance();
+            // Listen today's attendance
+            listenTodayAttendance();
 
-            startCamera();
+            startKioskCamera();
 
         } catch (err) {
-            console.error("Ralat Inisialisasi Kiosk:", err);
-            statusLabel.innerHTML = '<span style="color:var(--danger)">❌ Gagal Memuatkan Model Kamera/AI!</span>';
+            console.error("Initialization Error:", err);
+            kioskStatus.innerHTML = '<span class="text-rose-400">❌</span> Gagal memuatkan kamera atau model AI!';
+            aiBadge.innerText = "Ralat AI";
+            aiBadge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30";
         }
     }
 
@@ -479,16 +523,21 @@
             }
         });
 
+        const aiBadge = document.getElementById('aiBadge');
         if (labeledDescriptors.length > 0) {
-            faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48); // Threshold pengecaman
-            document.getElementById('statusLabel').innerHTML = `<span style="color:var(--success)">✅ AI SEDIA | ${labeledDescriptors.length} Pelajar Berdaftar</span>`;
+            faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
+            aiBadge.innerText = `${labeledDescriptors.length} Murid Berdaftar`;
+            aiBadge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+            document.getElementById('kioskStatus').innerHTML = '<span class="text-emerald-400">✅</span> AI Sedia Imbas Wajah!';
         } else {
             faceMatcher = null;
-            document.getElementById('statusLabel').innerHTML = `<span style="color:var(--warning)">⚠️ Tiada sampel wajah berdaftar dalam sistem!</span>`;
+            aiBadge.innerText = "Tiada Murid Berdaftar";
+            aiBadge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30";
+            document.getElementById('kioskStatus').innerHTML = '<span class="text-amber-400">⚠️</span> Sila daftar murid melalui Portal Admin dahulu.';
         }
     }
 
-    async function startCamera() {
+    async function startKioskCamera() {
         const video = document.getElementById('videoFeed');
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -502,7 +551,7 @@
                 faceapi.matchDimensions(canvas, displaySize);
 
                 setInterval(async () => {
-                    if (isProcessingScan || !faceMatcher) return;
+                    if (isProcessingScan || !faceMatcher || currentView !== 'kiosk') return;
 
                     const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
                         .withFaceLandmarks()
@@ -516,7 +565,6 @@
                         resizedDetections.forEach(detection => {
                             const result = faceMatcher.findBestMatch(detection.descriptor);
                             
-                            // Draw bounding box
                             const box = detection.detection.box;
                             const drawBox = new faceapi.draw.DrawBox(box, { 
                                 label: result.toString(), 
@@ -525,32 +573,30 @@
                             drawBox.draw(canvas);
 
                             if (result.distance < 0.48 && result.label !== 'unknown') {
-                                processAttendance(result.label);
+                                recordAttendance(result.label);
                             }
                         });
                     }
-                }, 300);
+                }, 350);
             });
         } catch (err) {
-            console.error("Gagal akses kamera:", err);
-            showAlert("Kamera tidak ditemui atau kebenaran ditolak.");
+            console.error("Camera access error:", err);
+            showCustomModal("Ralat Kamera", "Kamera tidak dapat diakses. Sila benarkan kebenaran kamera pada pelayar anda.");
         }
     }
 
-    async function processAttendance(studentName) {
+    async function recordAttendance(studentName) {
         const now = new Date();
-        const currentTimeStr = now.toTimeString().substring(0, 5); // HH:MM
+        const currentTimeStr = now.toTimeString().substring(0, 5);
         
-        // Elak pendaftaran berulang untuk pelajar yang sama dalam tempoh 30 saat
-        const lastScan = recentLogged.get(studentName);
-        if (lastScan && (now - lastScan) < 30000) {
-            return;
-        }
+        // Cooldown 30s per student
+        const lastLogged = recentLoggedMap.get(studentName);
+        if (lastLogged && (now - lastLogged) < 30000) return;
 
         isProcessingScan = true;
-        recentLogged.set(studentName, now);
+        recentLoggedMap.set(studentName, now);
 
-        const isLate = currentTimeStr > LATE_TIME_THRESHOLD;
+        const isLate = currentTimeStr > LATE_THRESHOLD;
         const statusText = isLate ? "Hadir (Lewat)" : "Hadir";
 
         try {
@@ -560,34 +606,33 @@
                 timestamp: Timestamp.fromDate(now)
             });
 
-            // Tunjuk Pop-up Notifikasi & Sebutan Audio
             showToast(studentName, statusText, now);
             speakGreeting(studentName);
 
         } catch (err) {
-            console.error("Ralat simpan kehadiran:", err);
-            showAlert("Gagal menyimpan rekod kehadiran!");
+            console.error("Error saving attendance:", err);
+            showCustomModal("Ralat Simpan", "Gagal menyimpan rekod kehadiran ke pangkalan data.");
         } finally {
             setTimeout(() => { isProcessingScan = false; }, 2000);
         }
     }
 
-    window.submitManualCode = async () => {
-        const pinInput = document.getElementById('studentPinInput');
+    window.submitManualPin = async () => {
+        const pinInput = document.getElementById('manualPinInput');
         const code = pinInput.value.trim();
 
         if (!code) {
-            showAlert("Sila masukkan Kod Akses Pelajar!");
+            showCustomModal("Sila Isikan Kod", "Sila masukkan Kod Akses Unik Pelajar.");
             return;
         }
 
         const found = allStudents.find(s => String(s.code).trim() === code);
         if (found) {
             const studentName = found.name || found.nama;
-            await processAttendance(studentName);
+            await recordAttendance(studentName);
             pinInput.value = "";
         } else {
-            showAlert("Kod Akses Pelajar tidak sah!");
+            showCustomModal("Kod Tidak Sah", "Kod Akses yang dimasukkan tidak wujud dalam sistem.");
         }
     };
 
@@ -604,31 +649,30 @@
 
         if (status.includes("Lewat")) {
             toastTag.innerText = "Hadir (Lewat)";
-            toastTag.className = "tag tag-lewat";
-            toast.style.borderColor = "var(--warning)";
+            toastTag.className = "px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30";
         } else {
             toastTag.innerText = "Hadir";
-            toastTag.className = "tag tag-hadir";
-            toast.style.borderColor = "var(--success)";
+            toastTag.className = "px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
         }
 
-        toast.style.display = 'flex';
+        toast.classList.remove('hidden', 'translate-x-full');
         setTimeout(() => {
-            toast.style.display = 'none';
+            toast.classList.add('translate-x-full');
+            setTimeout(() => toast.classList.add('hidden'), 300);
         }, 4000);
     }
 
     function speakGreeting(name) {
         if ('speechSynthesis' in window) {
-            const cleanName = name.split(' ')[0]; // Sebut nama depan
-            const utterance = new SpeechSynthesisUtterance(`Selamat datang, ${cleanName}`);
+            const firstName = name.split(' ')[0];
+            const utterance = new SpeechSynthesisUtterance(`Selamat datang, ${firstName}`);
             utterance.lang = 'ms-MY';
             utterance.rate = 0.9;
             window.speechSynthesis.speak(utterance);
         }
     }
 
-    function listenRecentAttendance() {
+    function listenTodayAttendance() {
         const todayStart = new Date(); todayStart.setHours(0,0,0,0);
         const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
 
@@ -636,38 +680,415 @@
             collection(db, "attendance"),
             where("timestamp", ">=", Timestamp.fromDate(todayStart)),
             where("timestamp", "<=", Timestamp.fromDate(todayEnd)),
-            orderBy("timestamp", "desc"),
-            limit(6)
+            orderBy("timestamp", "desc")
         );
 
         onSnapshot(q, (snap) => {
-            const list = document.getElementById('recentAttendanceList');
-            list.innerHTML = "";
+            currentAttendanceList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            // Update Recent List on Kiosk UI
+            const recentList = document.getElementById('kioskRecentList');
+            document.getElementById('todayCountBadge').innerText = `${currentAttendanceList.length} Murid`;
 
-            if (snap.empty) {
-                list.innerHTML = `<li style="text-align: center; color: #64748b; padding: 20px; font-size: 0.85rem;">Belum ada imbasan hari ini.</li>`;
-                return;
+            if (currentAttendanceList.length === 0) {
+                recentList.innerHTML = `<li class="text-center text-xs text-slate-500 py-10 font-medium">Belum ada rekod imbasan hari ini.</li>`;
+            } else {
+                recentList.innerHTML = currentAttendanceList.slice(0, 10).map(item => {
+                    const dateObj = item.timestamp ? item.timestamp.toDate() : new Date();
+                    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    const isLate = (item.status || "").includes("Lewat");
+
+                    return `
+                        <li class="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-3 rounded-2xl transition hover:border-slate-700">
+                            <div>
+                                <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                                <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${isLate ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+                                ${item.status || 'Hadir'}
+                            </span>
+                        </li>
+                    `;
+                }).join('');
             }
 
-            snap.forEach(docSnap => {
-                const data = docSnap.data();
-                const timeStr = data.timestamp ? data.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : "--:--";
-                const isLate = (data.status || "").includes("Lewat");
-
-                list.innerHTML += `
-                    <li class="recent-item">
-                        <div>
-                            <div style="font-weight:700; font-size:0.9rem; color:var(--text);">${data.name}</div>
-                            <div style="font-size:0.75rem; color:#64748b; font-weight:600;">${timeStr}</div>
-                        </div>
-                        <span class="tag ${isLate ? 'tag-lewat' : 'tag-hadir'}">${data.status || 'Hadir'}</span>
-                    </li>
-                `;
-            });
+            renderAdminTable();
         });
     }
 
-    // Launch initial setup on load
+    window.handleAdminLogin = async () => {
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPass').value;
+
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (e) {
+            showCustomModal("Gagal Log Masuk", "Emel atau kata laluan tidak sah.");
+        }
+    };
+
+    onAuthStateChanged(auth, u => {
+        const authGate = document.getElementById('adminAuthGate');
+        const adminDashboard = document.getElementById('adminDashboard');
+
+        if (u) {
+            authGate.classList.add('hidden');
+            adminDashboard.classList.remove('hidden');
+            startAdminCamera();
+            fetchAttendanceData();
+        } else {
+            authGate.classList.remove('hidden');
+            adminDashboard.classList.add('hidden');
+        }
+    });
+
+    async function startAdminCamera() {
+        const video = document.getElementById('adminCamVideo');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300 } });
+            video.srcObject = stream;
+        } catch (e) {
+            console.error("Admin camera error:", e);
+        }
+    }
+
+    window.registerStudentFaces = async () => {
+        const nameInput = document.getElementById('regName');
+        const codeInput = document.getElementById('regCode');
+        const classSelect = document.getElementById('regClass');
+
+        const name = nameInput.value.trim().toUpperCase();
+        const code = codeInput.value.trim();
+        const studentClass = classSelect.value;
+
+        if (!name || !code) {
+            showCustomModal("Ruangan Kosong", "Sila lengkapkan Nama Penuh dan Kod Akses Pelajar.");
+            return;
+        }
+
+        const label = document.getElementById('regStatusLabel');
+        const video = document.getElementById('adminCamVideo');
+        let descriptors = [];
+
+        const angles = [
+            { title: "DEPAN", msg: "1/3: PANDANG LURUS KE KAMERA" },
+            { title: "KIRI", msg: "2/3: PUSING KEPALA KE KIRI (15°)" },
+            { title: "KANAN", msg: "3/3: PUSING KEPALA KE KANAN (15°)" }
+        ];
+
+        for (let i = 0; i < angles.length; i++) {
+            label.innerText = `⌛ ${angles[i].msg}`;
+            label.className = "text-center text-xs font-bold text-amber-400 mb-3";
+            await new Promise(r => setTimeout(r, 2000));
+
+            const det = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+                .withFaceLandmarks().withFaceDescriptor();
+
+            if (det) {
+                descriptors.push({ d: Array.from(det.descriptor) });
+                label.innerText = `✅ Sampel ${angles[i].title} Berjaya!`;
+                label.className = "text-center text-xs font-bold text-emerald-400 mb-3";
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                showCustomModal("Sampel Gagal", `Gagal mengesan wajah bagi posisi ${angles[i].title}. Sila cuba lagi.`);
+                label.innerText = "AI Kamera Sedia";
+                label.className = "text-center text-xs font-bold text-emerald-400 mb-3";
+                return;
+            }
+        }
+
+        try {
+            const q = query(collection(db, "users"), where("name", "==", name));
+            const snap = await getDocs(q);
+
+            if (!snap.empty) {
+                await updateDoc(doc(db, "users", snap.docs[0].id), { descriptors, role: studentClass, code });
+                showCustomModal("Kemaskini Berjaya", `Data dan sampel wajah bagi ${name} telah dikemaskini.`);
+            } else {
+                await addDoc(collection(db, "users"), { name, descriptors, role: studentClass, code });
+                showCustomModal("Pendaftaran Berjaya", `Pelajar ${name} berjaya didaftarkan ke pangkalan data.`);
+            }
+
+            nameInput.value = "";
+            codeInput.value = "";
+
+        } catch (e) {
+            showCustomModal("Ralat Simpan", e.message);
+        }
+
+        label.innerText = "AI Kamera Sedia";
+        label.className = "text-center text-xs font-bold text-emerald-400 mb-3";
+    };
+
+    window.fetchAttendanceData = () => {
+        const filterDate = document.getElementById('adminDateFilter').value || new Date().toISOString().split('T')[0];
+        document.getElementById('adminDateFilter').value = filterDate;
+        renderAdminTable();
+    };
+
+    window.renderAdminTable = () => {
+        const filterClass = document.getElementById('adminClassFilter')?.value || "SEMUA";
+        const searchVal = (document.getElementById('adminSearchInput')?.value || "").toLowerCase();
+        
+        const tbody = document.getElementById('adminTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        let countTotal = 0, countPresent = 0, countLate = 0;
+
+        if (allStudents.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-500">Tiada pelajar berdaftar dalam sistem.</td></tr>`;
+            return;
+        }
+
+        allStudents.forEach(student => {
+            const studentClass = student.role || "1 CEMERLANG";
+
+            if (filterClass !== "SEMUA" && studentClass !== filterClass) return;
+            if (searchVal && !student.name.toLowerCase().includes(searchVal)) return;
+
+            countTotal++;
+
+            const record = currentAttendanceList.find(r => 
+                r.name && r.name.trim().toUpperCase() === student.name.trim().toUpperCase()
+            );
+
+            let statusHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-800 text-slate-400 border border-slate-700">Tiada Rekod</span>`;
+            let timeHTML = "--:--";
+
+            if (record) {
+                countPresent++;
+                const dateObj = record.timestamp ? record.timestamp.toDate() : new Date();
+                timeHTML = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                const timeStr = dateObj.toTimeString().substring(0, 5);
+
+                const isLate = timeStr > LATE_THRESHOLD || (record.status || "").includes("Lewat");
+                if (isLate) countLate++;
+
+                statusHTML = `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${isLate ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${record.status || 'Hadir'}</span>`;
+            }
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="py-3">
+                        <div class="font-bold text-white hover:text-indigo-400 cursor-pointer" onclick="openStudentCalendar('${student.name}')">${student.name}</div>
+                        <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">${studentClass}</span>
+                    </td>
+                    <td class="py-3 font-mono text-slate-300">${timeHTML}</td>
+                    <td class="py-3">${statusHTML}</td>
+                    <td class="py-3 text-right space-x-1">
+                        <button onclick="deleteStudentAccount('${student.id}', '${student.name}')" class="p-1 text-rose-400 hover:text-rose-300 transition" title="Padam Akaun">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('statTotal').innerText = countTotal;
+        document.getElementById('statPresent').innerText = countPresent - countLate;
+        document.getElementById('statLate').innerText = countLate;
+        document.getElementById('statAbsent').innerText = countTotal - countPresent;
+
+        updateAnalyticsBox(countTotal, countPresent - countLate, countLate);
+    };
+
+    function updateAnalyticsBox(total, exact, late) {
+        const container = document.getElementById('analyticsContent');
+        const presentTotal = exact + late;
+        const percent = total > 0 ? ((presentTotal / total) * 100).toFixed(1) : "0.0";
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center my-2">
+                <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span class="text-2xl font-black text-indigo-400">${percent}%</span>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Peratus Kehadiran Keseluruhan</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span class="text-xl font-bold text-emerald-400">${exact} Murid</span>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Menepati Masa</p>
+                </div>
+                <div class="p-3 rounded-2xl bg-slate-900 border border-slate-800">
+                    <span class="text-xl font-bold text-amber-400">${late} Murid</span>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Hadir Lewat</p>
+                </div>
+            </div>
+        `;
+    }
+
+    window.generateAndPrintAnalysis = () => {
+        const dateVal = document.getElementById('adminDateFilter').value;
+        const printBody = document.getElementById('printBody');
+        const printDateTitle = document.getElementById('printDateTitle');
+
+        printDateTitle.innerText = "Tarikh Rekod: " + dateVal;
+        printBody.innerHTML = document.getElementById('analyticsContent').innerHTML + `<br>` + document.getElementById('adminTableBody').parentElement.outerHTML;
+
+        window.print();
+    };
+
+    window.exportToExcel = () => {
+        const table = document.getElementById("adminTableBody").parentElement;
+        XLSX.writeFile(XLSX.utils.table_to_book(table), `Laporan_Kehadiran_Pelajar.xlsx`);
+    };
+
+    window.deleteStudentAccount = (id, name) => {
+        showCustomModal("Sahkan Padam Pelajar", `Adakah anda pasti untuk memadam rekod pendaftaran bagi ${name}?`, true, async (pin) => {
+            if (pin !== ADMIN_PIN) {
+                showCustomModal("PIN Salah", "PIN Admin yang dimasukkan adalah tidak sah.");
+                return;
+            }
+            await deleteDoc(doc(db, "users", id));
+            showCustomModal("Dipadam", `Akaun pelajar ${name} telah dipadam.`);
+        });
+    };
+
+    window.promptClearTodayAttendance = () => {
+        const filterDate = document.getElementById('adminDateFilter').value;
+        showCustomModal("Sahkan Padam Kehadiran", `Adakah anda pasti untuk memadam SEMUA rekod kehadiran bagi tarikh ${filterDate}?`, true, async (pin) => {
+            if (pin !== ADMIN_PIN) {
+                showCustomModal("PIN Salah", "PIN Admin yang dimasukkan adalah tidak sah.");
+                return;
+            }
+
+            const startDate = new Date(filterDate); startDate.setHours(0,0,0,0);
+            const endDate = new Date(filterDate); endDate.setHours(23,59,59,999);
+
+            const q = query(collection(db, "attendance"), 
+                where("timestamp", ">=", Timestamp.fromDate(startDate)),
+                where("timestamp", "<=", Timestamp.fromDate(endDate))
+            );
+
+            const snap = await getDocs(q);
+            const deletes = snap.docs.map(d => deleteDoc(doc(db, "attendance", d.id)));
+            await Promise.all(deletes);
+
+            showCustomModal("Dipadamkan", `Berjaya memadam ${snap.docs.length} rekod kehadiran.`);
+        });
+    };
+
+    window.switchView = (viewName) => {
+        currentView = viewName;
+        const kioskBtn = document.getElementById('tabKiosk');
+        const adminBtn = document.getElementById('tabAdmin');
+        const viewKiosk = document.getElementById('viewKiosk');
+        const viewAdmin = document.getElementById('viewAdmin');
+
+        if (viewName === 'kiosk') {
+            viewKiosk.classList.remove('hidden');
+            viewAdmin.classList.add('hidden');
+            kioskBtn.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-indigo-600 text-white shadow-md";
+            adminBtn.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-white";
+        } else {
+            viewKiosk.classList.add('hidden');
+            viewAdmin.classList.remove('hidden');
+            adminBtn.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-indigo-600 text-white shadow-md";
+            kioskBtn.className = "px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 text-slate-400 hover:text-white";
+        }
+    };
+
+    window.toggleDarkMode = () => {
+        document.documentElement.classList.toggle('dark');
+        document.documentElement.classList.toggle('light');
+    };
+
+    function showCustomModal(title, desc, requiresPin = false, onConfirm = null) {
+        const modal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalDesc = document.getElementById('modalDesc');
+        const inputArea = document.getElementById('modalCustomInputArea');
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        const pinInput = document.getElementById('modalInputPin');
+
+        modalTitle.innerText = title;
+        modalDesc.innerText = desc;
+        pinInput.value = "";
+
+        if (requiresPin) {
+            inputArea.classList.remove('hidden');
+        } else {
+            inputArea.classList.add('hidden');
+        }
+
+        confirmBtn.onclick = () => {
+            modal.classList.add('hidden');
+            if (onConfirm) onConfirm(pinInput.value);
+        };
+
+        modal.classList.remove('hidden');
+    }
+
+    window.closeCustomModal = (id = 'customModal') => {
+        document.getElementById(id).classList.add('hidden');
+    };
+
+    // Student Calendar Navigation
+    window.openStudentCalendar = async (studentName) => {
+        activeCalStudent = studentName;
+        calDate = new Date();
+        document.getElementById('calStudentName').innerText = studentName;
+        document.getElementById('calendarModal').classList.remove('hidden');
+        await renderStudentCalendar();
+    };
+
+    window.prevCalMonth = () => { calDate.setMonth(calDate.getMonth() - 1); renderStudentCalendar(); };
+    window.nextCalMonth = () => { calDate.setMonth(calDate.getMonth() + 1); renderStudentCalendar(); };
+
+    async function renderStudentCalendar() {
+        const year = calDate.getFullYear();
+        const month = calDate.getMonth();
+        const monthNames = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
+        
+        document.getElementById('calMonthYear').innerText = `${monthNames[month]} ${year}`;
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '<div class="col-span-7 py-4 text-slate-400">Loading...</div>';
+
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        const q = query(collection(db, "attendance"),
+            where("timestamp", ">=", Timestamp.fromDate(startDate)),
+            where("timestamp", "<=", Timestamp.fromDate(endDate))
+        );
+
+        const snap = await getDocs(q);
+        const datesMap = {};
+
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.name && data.name.toUpperCase() === activeCalStudent.toUpperCase()) {
+                const dayNum = data.timestamp.toDate().getDate();
+                datesMap[dayNum] = data.status || "Hadir";
+            }
+        });
+
+        grid.innerHTML = "";
+        ["AH", "IS", "SE", "RA", "KH", "JU", "SA"].forEach(day => {
+            grid.innerHTML += `<div class="font-bold text-[10px] text-slate-400 py-1">${day}</div>`;
+        });
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIndex; i++) grid.innerHTML += `<div></div>`;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const status = datesMap[day];
+            let badgeClass = "bg-slate-800 text-slate-400 border border-slate-700";
+
+            if (status) {
+                if (status.includes("Lewat")) badgeClass = "bg-amber-500/20 text-amber-400 border border-amber-500/40 font-extrabold";
+                else badgeClass = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-extrabold";
+            }
+
+            grid.innerHTML += `
+                <div class="aspect-square rounded-xl p-1 flex flex-col items-center justify-center ${badgeClass}">
+                    <span class="text-xs">${day}</span>
+                </div>
+            `;
+        }
+    }
+
+    // Launch application on window load
     window.onload = initKiosk;
 </script>
 </body>
