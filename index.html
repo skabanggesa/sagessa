@@ -412,25 +412,176 @@
     </div>
 </div>
 
-<!-- Custom Modal Box (Replaces alert/confirm) -->
-<div id="customModal" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-        <h3 id="modalTitle" class="text-base font-bold text-indigo-400">Notifikasi</h3>
-        <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed"></p>
-        <div id="modalCustomInputArea" class="hidden">
-            <input type="password" id="modalInputPin" maxlength="6" placeholder="Masukkan PIN Admin" class="w-full bg-slate-950 border border-slate-700 text-center font-mono text-base font-bold py-2.5 rounded-xl text-white outline-none focus:border-indigo-500">
-        </div>
-        <div class="flex justify-end space-x-2 pt-2">
-            <button id="modalCancelBtn" onclick="closeCustomModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
-                Batal
-            </button>
-            <button id="modalConfirmBtn" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg">
-                Sahkan
-            </button>
+<!-- ========================================================= -->
+<!-- MODAL 1: PENGESAHAN WAJAH -->
+<!-- ========================================================= -->
+<div id="faceConfirmModal"
+     class="fixed inset-0 z-[1100] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
+
+    <div class="glass-panel bg-slate-900 border border-indigo-500/30 rounded-3xl p-7 max-w-md w-full shadow-2xl">
+
+        <div class="text-center">
+
+            <div class="w-20 h-20 mx-auto rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-4xl mb-4">
+                👤
+            </div>
+
+            <p class="text-[10px] uppercase tracking-widest font-extrabold text-indigo-400 mb-2">
+                WAJAH DIKESAN
+            </p>
+
+            <h3 id="faceConfirmName"
+                class="text-xl font-extrabold text-white uppercase leading-tight">
+                NAMA PELAJAR
+            </h3>
+
+            <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                Sistem AI mengesan wajah ini sebagai pelajar di bawah.
+                Adakah ini anda?
+            </p>
+
+            <div class="mt-5 p-4 rounded-2xl bg-slate-950/70 border border-slate-800">
+                <div class="flex items-center justify-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs font-bold text-emerald-400">
+                        Sila sahkan identiti anda
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-6">
+
+                <button id="faceConfirmYesBtn"
+                        onclick="confirmDetectedFace()"
+                        class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-600/20 transition">
+                    ✓ YA SAYA
+                </button>
+
+                <button onclick="rejectDetectedFace()"
+                        class="bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-rose-600/20 transition">
+                    ✕ BUKAN SAYA
+                </button>
+
+            </div>
+
+            <p class="text-[9px] text-slate-500 mt-4">
+                Imbasan kamera dijeda sementara sehingga pengesahan selesai.
+            </p>
+
         </div>
     </div>
 </div>
 
+
+<!-- ========================================================= -->
+<!-- MODAL 2: KOD AKSES PIN -->
+<!-- ========================================================= -->
+<div id="accessCodeModal"
+     class="fixed inset-0 z-[1100] bg-black/75 backdrop-blur-md flex items-center justify-center p-4 hidden">
+
+    <div class="glass-panel bg-slate-900 border border-cyan-500/30 rounded-3xl p-7 max-w-md w-full shadow-2xl">
+
+        <div class="text-center">
+
+            <div class="w-20 h-20 mx-auto rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-4xl mb-4">
+                🔐
+            </div>
+
+            <p class="text-[10px] uppercase tracking-widest font-extrabold text-cyan-400 mb-2">
+                PENGESAHAN MANUAL
+            </p>
+
+            <h3 class="text-xl font-extrabold text-white">
+                Kod Akses Pelajar
+            </h3>
+
+            <p class="text-xs text-slate-400 mt-3 leading-relaxed">
+                Masukkan Kod Akses anda untuk meneruskan rekod kehadiran.
+            </p>
+
+            <div class="mt-5">
+
+                <input type="password"
+                       id="faceRejectPinInput"
+                       maxlength="6"
+                       inputmode="numeric"
+                       autocomplete="off"
+                       placeholder="MASUKKAN KOD 4-6 DIGIT"
+                       onkeydown="if(event.key === 'Enter') verifyFaceRejectPin()"
+                       class="w-full bg-slate-950 border border-slate-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 text-center font-mono text-xl font-extrabold tracking-[0.35em] text-white rounded-2xl px-4 py-4 outline-none transition">
+
+            </div>
+
+            <div id="accessCodeError"
+                 class="hidden mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold">
+                Kod Akses Tidak Sah
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-5">
+
+                <button onclick="cancelAccessCodeModal()"
+                        class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-extrabold text-sm py-3.5 rounded-2xl transition">
+                    Batal
+                </button>
+
+                <button id="verifyAccessCodeBtn"
+                        onclick="verifyFaceRejectPin()"
+                        class="bg-cyan-600 hover:bg-cyan-500 active:scale-95 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-cyan-600/20 transition">
+                    Sahkan Kod
+                </button>
+
+            </div>
+
+            <p class="text-[9px] text-slate-500 mt-4">
+                Kod ini digunakan apabila pengesanan wajah tidak sepadan dengan identiti anda.
+            </p>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- ========================================================= -->
+<!-- CUSTOM MODAL ADMIN / NOTIFIKASI -->
+<!-- ========================================================= -->
+<div id="customModal"
+     class="fixed inset-0 z-[1200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+
+    <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+
+        <h3 id="modalTitle" class="text-base font-bold text-indigo-400">
+            Notifikasi
+        </h3>
+
+        <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed"></p>
+
+        <div id="modalCustomInputArea" class="hidden">
+
+            <input type="password"
+                   id="modalInputPin"
+                   maxlength="6"
+                   placeholder="Masukkan PIN Admin"
+                   class="w-full bg-slate-950 border border-slate-700 text-center font-mono text-base font-bold py-2.5 rounded-xl text-white outline-none focus:border-indigo-500">
+
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2">
+
+            <button id="modalCancelBtn"
+                    onclick="closeCustomModal()"
+                    class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                Batal
+            </button>
+
+            <button id="modalConfirmBtn"
+                    class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg">
+                Sahkan
+            </button>
+
+        </div>
+    </div>
+</div>
+    
 <!-- Calendar Modal for Individual Student -->
 <div id="calendarModal" class="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="glass-panel bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -485,6 +636,10 @@
     let currentAttendanceList = [];
     let recentLoggedMap = new Map();
     let isProcessingScan = false;
+    // Pelajar yang sedang menunggu pengesahan Modal 1
+    let pendingFaceStudent = null;
+    // Elak detection yang sama membuka modal berkali-kali
+    let lastDetectedStudent = null;
     let currentView = 'kiosk';
     let calDate = new Date();
     let activeCalStudent = '';
@@ -556,80 +711,761 @@
     }
 
     async function startKioskCamera() {
-        const video = document.getElementById('videoFeed');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" } 
-            });
-            video.srcObject = stream;
-            
-            video.addEventListener('play', () => {
-                const canvas = document.getElementById('overlayCanvas');
-                const displaySize = { width: video.videoWidth || 640, height: video.videoHeight || 480 };
-                faceapi.matchDimensions(canvas, displaySize);
+    const video = document.getElementById('videoFeed');
 
-                setInterval(async () => {
-                    if (isProcessingScan || !faceMatcher || currentView !== 'kiosk') return;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "user"
+            }
+        });
 
-                    const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+        video.srcObject = stream;
+
+        video.addEventListener('play', () => {
+
+            const canvas = document.getElementById('overlayCanvas');
+
+            const displaySize = {
+                width: video.videoWidth || 640,
+                height: video.videoHeight || 480
+            };
+
+            faceapi.matchDimensions(canvas, displaySize);
+
+            setInterval(async () => {
+
+                // =====================================================
+                // PAUSE SCANNING
+                // =====================================================
+                if (
+                    isProcessingScan ||
+                    !faceMatcher ||
+                    currentView !== 'kiosk'
+                ) {
+                    return;
+                }
+
+                try {
+
+                    const detections = await faceapi
+                        .detectAllFaces(
+                            video,
+                            new faceapi.SsdMobilenetv1Options({
+                                minConfidence: 0.5
+                            })
+                        )
                         .withFaceLandmarks()
                         .withFaceDescriptors();
 
-                    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                    const resizedDetections =
+                        faceapi.resizeResults(
+                            detections,
+                            displaySize
+                        );
+
                     const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                    if (resizedDetections.length > 0) {
-                        resizedDetections.forEach(detection => {
-                            const result = faceMatcher.findBestMatch(detection.descriptor);
-                            
-                            const box = detection.detection.box;
-                            const drawBox = new faceapi.draw.DrawBox(box, { 
-                                label: result.toString(), 
-                                boxColor: result.distance < 0.48 ? '#10b981' : '#f43f5e' 
-                            });
-                            drawBox.draw(canvas);
+                    ctx.clearRect(
+                        0,
+                        0,
+                        canvas.width,
+                        canvas.height
+                    );
 
-                            if (result.distance < 0.58 && result.label !== 'unknown') {
-                                recordAttendance(result.label);
-                            }
-                        });
+                    if (resizedDetections.length === 0) {
+                        lastDetectedStudent = null;
+                        return;
                     }
-                }, 350);
-            });
-        } catch (err) {
-            console.error("Camera access error:", err);
-            showCustomModal("Ralat Kamera", "Kamera tidak dapat diakses. Sila benarkan kebenaran kamera pada pelayar anda.");
-        }
+
+                    resizedDetections.forEach(detection => {
+
+                        const result =
+                            faceMatcher.findBestMatch(
+                                detection.descriptor
+                            );
+
+                        /*
+                         * Video adalah mirror.
+                         * Canvas TIDAK mirror.
+                         *
+                         * Jadi koordinat X perlu diterbalikkan
+                         * supaya kotak AI kekal tepat di atas wajah.
+                         */
+                        const originalBox =
+                            detection.detection.box;
+
+                        const mirroredBox = {
+                            x: canvas.width -
+                               originalBox.x -
+                               originalBox.width,
+
+                            y: originalBox.y,
+
+                            width: originalBox.width,
+
+                            height: originalBox.height
+                        };
+
+                        const isKnown =
+                            result.label !== 'unknown';
+
+                        const isMatch =
+                            isKnown &&
+                            result.distance < 0.58;
+
+                        const labelText =
+                            isKnown
+                                ? `${result.label} (${result.distance.toFixed(2)})`
+                                : "WAJAH TIDAK DIKENALI";
+
+                        const drawBox =
+                            new faceapi.draw.DrawBox(
+                                mirroredBox,
+                                {
+                                    label: labelText,
+                                    boxColor:
+                                        isMatch
+                                            ? '#10b981'
+                                            : '#f43f5e',
+                                    lineWidth: 2
+                                }
+                            );
+
+                        drawBox.draw(canvas);
+
+                        // =================================================
+                        // WAJAH DIKENALI
+                        // =================================================
+                        if (isMatch) {
+
+                            /*
+                             * Pastikan wajah yang sama tidak membuka
+                             * modal berkali-kali sebelum user memilih.
+                             */
+                            if (
+                                lastDetectedStudent === result.label
+                            ) {
+                                return;
+                            }
+
+                            lastDetectedStudent =
+                                result.label;
+
+                            /*
+                             * PAUSE SCANNING SEBELUM MODAL DIBUKA.
+                             */
+                            isProcessingScan = true;
+
+                            pendingFaceStudent = {
+                                name: result.label,
+                                distance: result.distance
+                            };
+
+                            openFaceConfirmModal(
+                                result.label
+                            );
+                        }
+                    });
+
+                } catch (err) {
+                    console.error(
+                        "Face detection error:",
+                        err
+                    );
+                }
+
+            }, 350);
+        });
+
+    } catch (err) {
+
+        console.error(
+            "Camera access error:",
+            err
+        );
+
+        showCustomModal(
+            "Ralat Kamera",
+            "Kamera tidak dapat diakses. Sila benarkan kebenaran kamera pada pelayar anda."
+        );
+    }
+}
+
+// =============================================================
+// MODAL 1 - PENGESAHAN WAJAH
+// =============================================================
+
+function openFaceConfirmModal(studentName) {
+
+    const modal =
+        document.getElementById('faceConfirmModal');
+
+    const nameElement =
+        document.getElementById('faceConfirmName');
+
+    nameElement.innerText =
+        studentName.trim().toUpperCase();
+
+    modal.classList.remove('hidden');
+}
+
+
+window.confirmDetectedFace = async () => {
+
+    if (!pendingFaceStudent) {
+        closeFaceConfirmModal();
+        resumeKioskScanning();
+        return;
     }
 
-    async function recordAttendance(studentName) {
-    const now = new Date();
-    const currentTimeStr = now.toTimeString().substring(0, 5);
-    const formattedName = studentName.trim().toUpperCase();
-    
-    // 1. Batasan singkat (30 detik) agar kamera tidak memproses berulang dalam hitungan detik
-    const lastLogged = recentLoggedMap.get(formattedName);
-    if (lastLogged && (now - lastLogged) < 30000) return;
+    const studentName =
+        pendingFaceStudent.name;
 
-    // 2. PEMERIKSAAN UTAMA: Cek apakah murid sudah absen hari ini di Firebase
-    const rekodSediaAda = currentAttendanceList.find(r => 
-        r.name && r.name.trim().toUpperCase() === formattedName
+    const confirmBtn =
+        document.getElementById('faceConfirmYesBtn');
+
+    confirmBtn.disabled = true;
+
+    confirmBtn.innerText =
+        "⏳ MENYEMAK...";
+
+    try {
+
+        /*
+         * Pemeriksaan Firestore dibuat semula.
+         * Jangan hanya bergantung kepada currentAttendanceList
+         * kerana listener mungkin belum sempat dikemaskini.
+         */
+        const alreadyRecorded =
+            await checkAttendanceToday(
+                studentName
+            );
+
+        if (alreadyRecorded) {
+
+            const dateObj =
+                alreadyRecorded.timestamp
+                    ? alreadyRecorded.timestamp.toDate()
+                    : new Date();
+
+            const waktuAwal =
+                dateObj.toLocaleTimeString(
+                    [],
+                    {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    }
+                );
+
+            closeFaceConfirmModal();
+
+            showAlreadyRecordedToast(
+                studentName,
+                waktuAwal
+            );
+
+            pendingFaceStudent = null;
+
+            /*
+             * Beri sedikit masa sebelum kamera disambung semula.
+             */
+            setTimeout(() => {
+                resumeKioskScanning();
+            }, 2500);
+
+            return;
+        }
+
+        /*
+         * Belum hadir.
+         * Simpan kehadiran.
+         */
+        await saveAttendanceRecord(
+            studentName
+        );
+
+        closeFaceConfirmModal();
+
+        pendingFaceStudent = null;
+
+        setTimeout(() => {
+            resumeKioskScanning();
+        }, 2500);
+
+    } catch (err) {
+
+        console.error(
+            "Face confirmation error:",
+            err
+        );
+
+        showCustomModal(
+            "Ralat Sistem",
+            "Sistem gagal menyemak atau menyimpan rekod kehadiran. Sila cuba semula."
+        );
+
+        /*
+         * Jangan biarkan kiosk terkunci selama-lamanya
+         * jika berlaku error.
+         */
+        pendingFaceStudent = null;
+
+        setTimeout(() => {
+            resumeKioskScanning();
+        }, 1000);
+
+    } finally {
+
+        confirmBtn.disabled = false;
+
+        confirmBtn.innerText =
+            "✓ YA SAYA";
+    }
+};
+
+
+window.rejectDetectedFace = () => {
+
+    /*
+     * Modal 1 ditutup dan Modal 2 dibuka.
+     */
+    document
+        .getElementById('faceConfirmModal')
+        .classList.add('hidden');
+
+    const pinInput =
+        document.getElementById('faceRejectPinInput');
+
+    const errorBox =
+        document.getElementById('accessCodeError');
+
+    pinInput.value = "";
+
+    errorBox.classList.add('hidden');
+
+    document
+        .getElementById('accessCodeModal')
+        .classList.remove('hidden');
+
+    setTimeout(() => {
+        pinInput.focus();
+    }, 150);
+};
+
+    // =============================================================
+// MODAL 2 - KOD AKSES
+// =============================================================
+
+window.verifyFaceRejectPin = async () => {
+
+    const pinInput =
+        document.getElementById('faceRejectPinInput');
+
+    const errorBox =
+        document.getElementById('accessCodeError');
+
+    const verifyBtn =
+        document.getElementById('verifyAccessCodeBtn');
+
+    const code =
+        pinInput.value.trim();
+
+    errorBox.classList.add('hidden');
+
+    if (!code) {
+
+        errorBox.innerText =
+            "Sila masukkan Kod Akses.";
+
+        errorBox.classList.remove('hidden');
+
+        pinInput.focus();
+
+        return;
+    }
+
+    if (!/^\d{4,6}$/.test(code)) {
+
+        errorBox.innerText =
+            "Kod Akses mestilah 4 hingga 6 digit.";
+
+        errorBox.classList.remove('hidden');
+
+        pinInput.focus();
+
+        return;
+    }
+
+    verifyBtn.disabled = true;
+
+    verifyBtn.innerText =
+        "⏳ MENYEMAK...";
+
+    try {
+
+        /*
+         * Cari pemilik kod dalam Firestore.
+         *
+         * users:
+         * {
+         *    name: "...",
+         *    code: "1234",
+         *    role: "...",
+         *    descriptors: [...]
+         * }
+         */
+        const q =
+            query(
+                collection(db, "users"),
+                where("code", "==", code)
+            );
+
+        const snap =
+            await getDocs(q);
+
+        if (snap.empty) {
+
+            errorBox.innerText =
+                "Kod Akses Tidak Sah";
+
+            errorBox.classList.remove('hidden');
+
+            pinInput.select();
+
+            return;
+        }
+
+        /*
+         * Ambil pemilik kod pertama.
+         */
+        const studentDoc =
+            snap.docs[0];
+
+        const student =
+            {
+                id: studentDoc.id,
+                ...studentDoc.data()
+            };
+
+        const studentName =
+            (
+                student.name ||
+                student.nama ||
+                ""
+            ).trim().toUpperCase();
+
+        if (!studentName) {
+
+            errorBox.innerText =
+                "Kod dijumpai tetapi data nama pelajar tidak lengkap.";
+
+            errorBox.classList.remove('hidden');
+
+            return;
+        }
+
+        /*
+         * Semak sekali lagi kehadiran hari ini
+         * menggunakan nama pemilik kod.
+         */
+        const alreadyRecorded =
+            await checkAttendanceToday(
+                studentName
+            );
+
+        if (alreadyRecorded) {
+
+            const dateObj =
+                alreadyRecorded.timestamp
+                    ? alreadyRecorded.timestamp.toDate()
+                    : new Date();
+
+            const waktuAwal =
+                dateObj.toLocaleTimeString(
+                    [],
+                    {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    }
+                );
+
+            closeAccessCodeModal();
+
+            showAlreadyRecordedToast(
+                studentName,
+                waktuAwal
+            );
+
+            pendingFaceStudent = null;
+
+            setTimeout(() => {
+                resumeKioskScanning();
+            }, 2500);
+
+            return;
+        }
+
+        /*
+         * Kod sah dan belum hadir.
+         */
+        await saveAttendanceRecord(
+            studentName
+        );
+
+        closeAccessCodeModal();
+
+        pendingFaceStudent = null;
+
+        setTimeout(() => {
+            resumeKioskScanning();
+        }, 2500);
+
+    } catch (err) {
+
+        console.error(
+            "Access code verification error:",
+            err
+        );
+
+        errorBox.innerText =
+            "Ralat ketika menyemak Kod Akses. Sila cuba semula.";
+
+        errorBox.classList.remove('hidden');
+
+    } finally {
+
+        verifyBtn.disabled = false;
+
+        verifyBtn.innerText =
+            "Sahkan Kod";
+    }
+};
+
+
+window.cancelAccessCodeModal = () => {
+
+    closeAccessCodeModal();
+
+    pendingFaceStudent = null;
+
+    /*
+     * Beri masa sedikit supaya kamera tidak terus
+     * membuka modal yang sama selepas Batal.
+     */
+    setTimeout(() => {
+        resumeKioskScanning();
+    }, 1000);
+};
+
+
+function closeFaceConfirmModal() {
+
+    document
+        .getElementById('faceConfirmModal')
+        .classList.add('hidden');
+}
+
+
+function closeAccessCodeModal() {
+
+    document
+        .getElementById('accessCodeModal')
+        .classList.add('hidden');
+
+    document
+        .getElementById('faceRejectPinInput')
+        .value = "";
+
+    document
+        .getElementById('accessCodeError')
+        .classList.add('hidden');
+}
+
+
+function resumeKioskScanning() {
+
+    isProcessingScan = false;
+
+    /*
+     * Reset nama terakhir selepas tempoh singkat.
+     * Ini menghalang modal daripada terbuka semula
+     * serta-merta tetapi membenarkan imbasan baru.
+     */
+    setTimeout(() => {
+        lastDetectedStudent = null;
+    }, 1500);
+}
+
+    // =============================================================
+// SEMAK KEHADIRAN HARI INI
+// =============================================================
+
+async function checkAttendanceToday(studentName) {
+
+    const formattedName =
+        studentName.trim().toUpperCase();
+
+    /*
+     * Kita query berdasarkan nama sahaja dahulu.
+     * Kemudian tarikh ditapis di JavaScript.
+     *
+     * Ini mengurangkan keperluan composite index tambahan
+     * Firestore untuk query name + timestamp.
+     */
+    const q =
+        query(
+            collection(db, "attendance"),
+            where("name", "==", formattedName)
+        );
+
+    const snap =
+        await getDocs(q);
+
+    const now =
+        new Date();
+
+    const startOfDay =
+        new Date(now);
+
+    startOfDay.setHours(
+        0, 0, 0, 0
     );
 
-    if (rekodSediaAda) {
-        // Ambil waktu saat pertama kali murid absen hari ini
-        const dateObj = rekodSediaAda.timestamp ? rekodSediaAda.timestamp.toDate() : new Date();
-        const waktuAwal = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const endOfDay =
+        new Date(now);
 
-        // Tampilkan notifikasi bahwa murid SUDAH HADIR sebelumnya
-        showAlreadyRecordedToast(formattedName, waktuAwal);
-        
-        // Simpan ke memori singkat agar tidak memicu suara/notifikasi terus-menerus
-        recentLoggedMap.set(formattedName, now);
-        return; 
+    endOfDay.setHours(
+        23, 59, 59, 999
+    );
+
+    let foundRecord = null;
+
+    snap.forEach(docSnap => {
+
+        const data =
+            docSnap.data();
+
+        if (!data.timestamp) {
+            return;
+        }
+
+        const recordDate =
+            data.timestamp.toDate();
+
+        if (
+            recordDate >= startOfDay &&
+            recordDate <= endOfDay
+        ) {
+
+            if (!foundRecord) {
+
+                foundRecord = {
+                    id: docSnap.id,
+                    ...data
+                };
+            }
+        }
+    });
+
+    return foundRecord;
+}
+    
+    // =============================================================
+// SIMPAN KEHADIRAN
+// =============================================================
+
+async function saveAttendanceRecord(studentName) {
+
+    const now =
+        new Date();
+
+    const currentTimeStr =
+        now.toTimeString().substring(0, 5);
+
+    const formattedName =
+        studentName.trim().toUpperCase();
+
+    /*
+     * Double-check terakhir sebelum addDoc.
+     *
+     * Ini penting walaupun pemeriksaan telah dibuat
+     * dalam Modal 1 / Modal 2.
+     */
+    const alreadyRecorded =
+        await checkAttendanceToday(
+            formattedName
+        );
+
+    if (alreadyRecorded) {
+
+        const dateObj =
+            alreadyRecorded.timestamp
+                ? alreadyRecorded.timestamp.toDate()
+                : new Date();
+
+        const waktuAwal =
+            dateObj.toLocaleTimeString(
+                [],
+                {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                }
+            );
+
+        showAlreadyRecordedToast(
+            formattedName,
+            waktuAwal
+        );
+
+        return;
     }
 
+    const isLate =
+        currentTimeStr > LATE_THRESHOLD;
+
+    const statusText =
+        isLate
+            ? "Hadir (Lewat)"
+            : "Hadir";
+
+    try {
+
+        await addDoc(
+            collection(db, "attendance"),
+            {
+                name: formattedName,
+                status: statusText,
+                timestamp: Timestamp.fromDate(now)
+            }
+        );
+
+        showToast(
+            formattedName,
+            statusText,
+            now
+        );
+
+        speakGreeting(
+            formattedName
+        );
+
+    } catch (err) {
+
+        console.error(
+            "Error saving attendance:",
+            err
+        );
+
+        throw err;
+    }
+}
+    
     // 3. JIKA BELUM HADIR: Simpan data baru ke Firebase
     isProcessingScan = true;
     recentLoggedMap.set(formattedName, now);
@@ -657,44 +1493,181 @@
 
 // Fungsi tambahan untuk menampilkan pemberitahuan bahwa murid sudah absen
 function showAlreadyRecordedToast(name, waktuAwal) {
-    const toast = document.getElementById('toastNotification');
-    const toastName = document.getElementById('toastName');
-    const toastTag = document.getElementById('toastTag');
-    const toastTime = document.getElementById('toastTime');
-    const toastAvatar = document.getElementById('toastAvatar');
 
-    toastName.innerText = name;
-    toastTime.innerText = `Sudah dipindai jam ${waktuAwal}`;
-    toastAvatar.innerText = "⚠️";
+    const toast =
+        document.getElementById('toastNotification');
 
-    toastTag.innerText = "SUDAH HADIR";
-    toastTag.className = "px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+    const toastName =
+        document.getElementById('toastName');
 
-    toast.classList.remove('hidden', 'translate-x-full');
+    const toastTag =
+        document.getElementById('toastTag');
+
+    const toastTime =
+        document.getElementById('toastTime');
+
+    const toastAvatar =
+        document.getElementById('toastAvatar');
+
+    toastName.innerText =
+        name;
+
+    toastTime.innerText =
+        `Sudah hadir jam ${waktuAwal}`;
+
+    toastAvatar.innerText =
+        "⚠️";
+
+    toastTag.innerText =
+        "SUDAH HADIR";
+
+    toastTag.className =
+        "px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+
+    toast.classList.remove(
+        'hidden',
+        'translate-x-full'
+    );
+
     setTimeout(() => {
-        toast.classList.add('translate-x-full');
-        setTimeout(() => toast.classList.add('hidden'), 300);
+
+        toast.classList.add(
+            'translate-x-full'
+        );
+
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 300);
+
     }, 4000);
 }
     
     window.submitManualPin = async () => {
-        const pinInput = document.getElementById('manualPinInput');
-        const code = pinInput.value.trim();
 
-        if (!code) {
-            showCustomModal("Sila Isikan Kod", "Sila masukkan Kod Akses Unik Pelajar.");
+    const pinInput =
+        document.getElementById('manualPinInput');
+
+    const code =
+        pinInput.value.trim();
+
+    if (!code) {
+
+        showCustomModal(
+            "Sila Isikan Kod",
+            "Sila masukkan Kod Akses Unik Pelajar."
+        );
+
+        return;
+    }
+
+    if (!/^\d{4,6}$/.test(code)) {
+
+        showCustomModal(
+            "Kod Tidak Sah",
+            "Kod Akses mestilah antara 4 hingga 6 digit."
+        );
+
+        return;
+    }
+
+    try {
+
+        /*
+         * Query terus ke Firestore users.
+         */
+        const q =
+            query(
+                collection(db, "users"),
+                where("code", "==", code)
+            );
+
+        const snap =
+            await getDocs(q);
+
+        if (snap.empty) {
+
+            showCustomModal(
+                "Kod Tidak Sah",
+                "Kod Akses yang dimasukkan tidak wujud dalam sistem."
+            );
+
             return;
         }
 
-        const found = allStudents.find(s => String(s.code).trim() === code);
-        if (found) {
-            const studentName = found.name || found.nama;
-            await recordAttendance(studentName);
-            pinInput.value = "";
-        } else {
-            showCustomModal("Kod Tidak Sah", "Kod Akses yang dimasukkan tidak wujud dalam sistem.");
+        const student =
+            snap.docs[0].data();
+
+        const studentName =
+            (
+                student.name ||
+                student.nama ||
+                ""
+            ).trim().toUpperCase();
+
+        if (!studentName) {
+
+            showCustomModal(
+                "Data Tidak Lengkap",
+                "Pemilik Kod Akses ini tidak mempunyai nama yang sah."
+            );
+
+            return;
         }
-    };
+
+        /*
+         * Semak rekod hari ini sebelum simpan.
+         */
+        const alreadyRecorded =
+            await checkAttendanceToday(
+                studentName
+            );
+
+        if (alreadyRecorded) {
+
+            const dateObj =
+                alreadyRecorded.timestamp
+                    ? alreadyRecorded.timestamp.toDate()
+                    : new Date();
+
+            const waktuAwal =
+                dateObj.toLocaleTimeString(
+                    [],
+                    {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    }
+                );
+
+            showAlreadyRecordedToast(
+                studentName,
+                waktuAwal
+            );
+
+            pinInput.value = "";
+
+            return;
+        }
+
+        await saveAttendanceRecord(
+            studentName
+        );
+
+        pinInput.value = "";
+
+    } catch (err) {
+
+        console.error(
+            "Manual PIN error:",
+            err
+        );
+
+        showCustomModal(
+            "Ralat Sistem",
+            "Gagal menyemak Kod Akses. Sila cuba semula."
+        );
+    }
+};
 
     function showToast(name, status, dateObj) {
         const toast = document.getElementById('toastNotification');
