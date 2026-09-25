@@ -283,7 +283,7 @@
 <body>
 
 <div id="sleepOverlay" onclick="wakeUp()">
-    <img src="ssa.png" alt="Logo E-Hadir">
+    <img src="ehadir.png" alt="Logo E-Hadir">
     <p>Sentuh Skrin Untuk Mula</p>
 </div>
 
@@ -346,7 +346,7 @@
 </div>
 
 <div class="container">
-    <img src="ssa.png" alt="Logo E-Hadir" class="logo">
+    <img src="ehadir.png" alt="Logo E-Hadir" class="logo">
 
     <h1>E-HADIR DIGITAL</h1>
     <div class="subtitle">SISTEM KEHADIRAN MURID • V2.0</div>
@@ -657,7 +657,8 @@
             if (bestMatch && lowestDist < MATCH_THRESHOLD) {
                 isProcessing = true;
                 pendingStudent = bestMatch;
-                wrongMatchCount = 0;
+                // PENTING: jangan reset wrongMatchCount di sini.
+                // Kiraan perlu kekal antara cubaan BUKAN SAYA.
 
                 $("confirmName").innerText = bestMatch.name.toUpperCase();
                 $("confirmClass").innerText = bestMatch.kelas
