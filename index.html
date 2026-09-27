@@ -283,7 +283,7 @@
 <body>
 
 <div id="sleepOverlay" onclick="wakeUp()">
-    <img src="ssa.png" alt="Logo E-Hadir">
+    <img src="ehadir.png" alt="Logo E-Hadir">
     <p>Sentuh Skrin Untuk Mula</p>
 </div>
 
@@ -346,7 +346,7 @@
 </div>
 
 <div class="container">
-    <img src="ssa.png" alt="Logo E-Hadir" class="logo">
+    <img src="ehadir.png" alt="Logo E-Hadir" class="logo">
 
     <h1>E-HADIR DIGITAL</h1>
     <div class="subtitle">SISTEM KEHADIRAN MURID • V2.0</div>
@@ -411,6 +411,13 @@
     const SCAN_INTERVAL = 180;
     const SLEEP_TIMEOUT = 10000;
 
+    // =====================================================
+    // SAGE / SSA DATA ARCHITECTURE
+    // students            = Master Data Murid
+    // student_biometrics  = descriptor + accessCode SSA
+    // attendance          = transaksi kehadiran berdasarkan studentId
+    // =====================================================
+
     let registeredUsers = [];
     let isProcessing = false;
     let isSleeping = false;
@@ -446,10 +453,9 @@
         return null;
     }
 
-    function normalizeStudent(docSnap) {
-        const data = docSnap.data();
-        const rawDescriptors = Array.isArray(data.descriptors)
-            ? data.descriptors
+    function normalizeStudent(studentId, studentData, biometricData) {
+        const rawDescriptors = Array.isArray(biometricData?.descriptors)
+            ? biometricData.descriptors
             : [];
 
         const descriptors = rawDescriptors
@@ -457,23 +463,77 @@
             .filter(Boolean);
 
         return {
-            id: docSnap.id,
-            name: String(data.name || "").trim(),
-            kelas: String(data.kelas || "").trim(),
-            accessCode: String(data.accessCode || "").trim(),
+            // ID Murid ialah identiti utama SAGE/SSA.
+            studentId: String(studentId || "").trim(),
+            name: String(studentData?.name || "").trim(),
+            kelas: String(studentData?.kelas || "").trim(),
+            accessCode: String(biometricData?.accessCode || "").trim(),
             descriptors
         };
     }
 
     async function loadStudents() {
-        const snap = await getDocs(collection(db, "users"));
+        setStatus("Memuatkan Master Data murid...", "#1d4ed8", "#eff6ff");
 
-        registeredUsers = snap.docs
-            .map(normalizeStudent)
-            .filter(student => student.name && student.descriptors.length > 0);
+        // 1. Baca Master Collection
+        const studentSnap = await getDocs(collection(db, "students"));
+        const studentMap = new Map();
 
-        console.log("Murid dimuatkan:", registeredUsers.length);
-        setStatus(`Data murid tersedia: ${registeredUsers.length}`, "#1d4ed8", "#eff6ff");
+        studentSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const studentId = String(data.studentId || "").trim();
+
+            if (studentId) {
+                studentMap.set(studentId, data);
+            }
+        });
+
+        // 2. Baca data khusus biometrik SSA
+        const biometricSnap = await getDocs(collection(db, "student_biometrics"));
+
+        registeredUsers = [];
+
+        biometricSnap.forEach(docSnap => {
+            const biometricData = docSnap.data();
+            const studentId = String(
+                biometricData.studentId || docSnap.id || ""
+            ).trim();
+
+            const masterData = studentMap.get(studentId);
+
+            // Biometrik tanpa Master Data tidak digunakan.
+            if (!masterData) {
+                console.warn("Biometrik diabaikan kerana studentId tiada dalam students:", studentId);
+                return;
+            }
+
+            const student = normalizeStudent(
+                studentId,
+                masterData,
+                biometricData
+            );
+
+            if (student.name && student.descriptors.length > 0) {
+                registeredUsers.push(student);
+            }
+        });
+
+        console.log("Master Data murid:", studentMap.size);
+        console.log("Murid dengan biometrik:", registeredUsers.length);
+
+        if (registeredUsers.length > 0) {
+            setStatus(
+                `${registeredUsers.length} murid berdaftar biometrik sedia diimbas`,
+                "#166534",
+                "#f0fdf4"
+            );
+        } else {
+            setStatus(
+                `Master Data: ${studentMap.size} murid. Belum ada biometrik berdaftar.`,
+                "#92400e",
+                "#fffbeb"
+            );
+        }
     }
 
     async function initSystem() {
@@ -511,13 +571,17 @@
         }
 
         $("pinSection").style.display = "none";
-        setStatus("Memuatkan data murid...", "#1d4ed8", "#eff6ff");
+        setStatus("Memuatkan data SSA...", "#1d4ed8", "#eff6ff");
 
         try {
             await loadStudents();
 
             if (registeredUsers.length === 0) {
-                setStatus("Tiada data murid dengan descriptor wajah.", "#b91c1c", "#fef2f2");
+                setStatus(
+                    "Belum ada murid berdaftar biometrik. Sila daftar biometrik di Admin.",
+                    "#92400e",
+                    "#fffbeb"
+                );
                 $("pinSection").style.display = "block";
                 return;
             }
@@ -555,7 +619,6 @@
         await video.play();
 
         setStatus("Kamera bersedia. Sila lihat kamera...", "#166534", "#f0fdf4");
-
         requestAnimationFrame(scanLoop);
     }
 
@@ -589,9 +652,13 @@
         if (isProcessing) return;
 
         try {
-            setStatus("Mengemas kini data murid...", "#1d4ed8", "#eff6ff");
+            setStatus("Mengemas kini data SSA...", "#1d4ed8", "#eff6ff");
             await loadStudents();
-            setStatus("Data murid dikemas kini. Sila lihat kamera.", "#166534", "#f0fdf4");
+            setStatus(
+                `${registeredUsers.length} murid dengan biometrik sedia diimbas.`,
+                "#166534",
+                "#f0fdf4"
+            );
         } catch (error) {
             console.error(error);
             setStatus("Gagal mengemas kini data.", "#b91c1c", "#fef2f2");
@@ -657,8 +724,9 @@
             if (bestMatch && lowestDist < MATCH_THRESHOLD) {
                 isProcessing = true;
                 pendingStudent = bestMatch;
-                // PENTING: jangan reset wrongMatchCount di sini.
-                // Kiraan perlu kekal antara cubaan BUKAN SAYA.
+
+                // Jangan reset wrongMatchCount di sini.
+                // Dua kali "BUKAN SAYA" akan membuka fallback Kod Akses.
 
                 $("confirmName").innerText = bestMatch.name.toUpperCase();
                 $("confirmClass").innerText = bestMatch.kelas
@@ -703,32 +771,50 @@
             : "Hadir";
     }
 
-    async function findTodayAttendance(userId) {
-        const q = query(
+    async function findTodayAttendance(studentId) {
+        const today = getTodayKey();
+        const records = [];
+
+        // Rekod baharu: studentId
+        const newQuery = query(
             collection(db, "attendance"),
-            where("userId", "==", userId)
+            where("studentId", "==", studentId)
         );
 
-        const snapshot = await getDocs(q);
-        const today = getTodayKey();
+        const newSnapshot = await getDocs(newQuery);
 
-        let found = null;
-
-        snapshot.forEach(docSnap => {
+        newSnapshot.forEach(docSnap => {
             const data = docSnap.data();
             const timestamp = data.timestamp?.toDate
                 ? data.timestamp.toDate()
                 : null;
 
             if (timestamp && getTodayKey(timestamp) === today) {
-                found = {
-                    ...data,
-                    timestamp
-                };
+                records.push({ ...data, timestamp });
             }
         });
 
-        return found;
+        // Keserasian dengan rekod lama yang masih menggunakan userId.
+        const legacyQuery = query(
+            collection(db, "attendance"),
+            where("userId", "==", studentId)
+        );
+
+        const legacySnapshot = await getDocs(legacyQuery);
+
+        legacySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const timestamp = data.timestamp?.toDate
+                ? data.timestamp.toDate()
+                : null;
+
+            if (timestamp && getTodayKey(timestamp) === today) {
+                records.push({ ...data, timestamp });
+            }
+        });
+
+        records.sort((a, b) => a.timestamp - b.timestamp);
+        return records[0] || null;
     }
 
     async function saveAttendance(student) {
@@ -738,7 +824,7 @@
         try {
             setStatus("Menyemak rekod kehadiran...", "#1d4ed8", "#eff6ff");
 
-            const existing = await findTodayAttendance(student.id);
+            const existing = await findTodayAttendance(student.studentId);
 
             $("overlay").style.backgroundColor = existing
                 ? "#f59e0b"
@@ -753,11 +839,12 @@
                 $("overlayText").innerText = "SUDAH DIREKODKAN";
                 $("overlayDetail").innerHTML =
                     `<strong>${student.name.toUpperCase()}</strong><br>` +
-                    `${student.kelas.toUpperCase()}<br><br>` +
+                    `${student.kelas.toUpperCase()}<br>` +
+                    `ID: ${student.studentId}<br><br>` +
                     `Telah diimbas pada ${firstTime}`;
             } else {
                 await addDoc(collection(db, "attendance"), {
-                    userId: student.id,
+                    studentId: student.studentId,
                     name: student.name.toUpperCase(),
                     kelas: student.kelas.toUpperCase(),
                     status,
@@ -768,7 +855,8 @@
                 $("overlayText").innerText = "KEHADIRAN DIREKODKAN";
                 $("overlayDetail").innerHTML =
                     `<strong>${student.name.toUpperCase()}</strong><br>` +
-                    `${student.kelas.toUpperCase()}<br><br>` +
+                    `${student.kelas.toUpperCase()}<br>` +
+                    `ID: ${student.studentId}<br><br>` +
                     `<strong>${status.toUpperCase()}</strong><br>` +
                     `${now.toLocaleTimeString("ms-MY")}`;
             }
@@ -846,6 +934,8 @@
             return;
         }
 
+        // Kod akses datang daripada student_biometrics,
+        // bukan Master Collection students.
         const foundUser = registeredUsers.find(
             user => user.accessCode && user.accessCode === inputCode
         );
@@ -859,8 +949,8 @@
 
         $("accessCodeModal").style.display = "none";
         wrongMatchCount = 0;
-
         pendingStudent = foundUser;
+
         await saveAttendance(foundUser);
     };
 
