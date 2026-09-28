@@ -406,7 +406,12 @@
 
     const DAILY_PIN = "123456";
     const MODEL_URL = "https://raw.githubusercontent.com/vladmandic/face-api/master/model/";
-    const LATE_TIME = "07:10";
+    // Waktu sesi kehadiran
+    // Pagi  = sebelum 2:00 petang
+    // KAFA  = 2:00 petang dan selepasnya
+    // Lewat KAFA = selepas 2:05 petang
+    const MORNING_SESSION_END = "13:00";
+    const KAFA_LATE_TIME = "14:05";
     const MATCH_THRESHOLD = 0.48;
     const SCAN_INTERVAL = 180;
     const SLEEP_TIMEOUT = 10000;
@@ -415,7 +420,7 @@
     // SAGE / SSA DATA ARCHITECTURE
     // students            = Master Data Murid
     // student_biometrics  = descriptor + accessCode SSA
-    // attendance          = transaksi kehadiran berdasarkan studentId
+    // attendance          = transaksi kehadiran berdasarkan studentId + session
     // =====================================================
 
     let registeredUsers = [];
@@ -761,19 +766,76 @@
         return `${year}-${month}-${day}`;
     }
 
-    function getAttendanceStatus(date = new Date()) {
-        const currentMinutes = date.getHours() * 60 + date.getMinutes();
-        const [lateHour, lateMinute] = LATE_TIME.split(":").map(Number);
-        const lateMinutes = lateHour * 60 + lateMinute;
+    function timeToMinutes(time) {
+        const [hour, minute] = time.split(":").map(Number);
+        return hour * 60 + minute;
+    }
 
-        return currentMinutes > lateMinutes
+    function getSession(date = new Date()) {
+        const currentMinutes = date.getHours() * 60 + date.getMinutes();
+        const morningEnd = timeToMinutes(MORNING_SESSION_END);
+
+        // 1:00 PM masih sesi pagi. Selepas 1:00 PM terus dianggap KAFA.
+        return currentMinutes <= morningEnd ? "PAGI" : "KAFA";
+    }
+
+    function getSessionLabel(session) {
+        return session === "KAFA" ? "KAFA" : "SESI PAGI";
+    }
+
+    function getAttendanceStatus(date = new Date()) {
+        const session = getSession(date);
+
+        // Untuk sesi pagi, status kekal seperti rekod biasa.
+        if (session === "PAGI") {
+            return "Hadir";
+        }
+
+        // KAFA: 2:05 petang ialah had lewat yang dipersetujui.
+        // Pada 2:05 tepat dikira Lewat.
+        const currentMinutes = date.getHours() * 60 + date.getMinutes();
+        const lateMinutes = timeToMinutes(KAFA_LATE_TIME);
+
+        return currentMinutes >= lateMinutes
             ? "Hadir (Lewat)"
             : "Hadir";
     }
 
-    async function findTodayAttendance(studentId) {
+    function getRecordSession(record) {
+        // Rekod baharu mempunyai medan session.
+        if (record?.session === "PAGI" || record?.session === "KAFA") {
+            return record.session;
+        }
+
+        // Rekod lama mungkin tiada session. Tentukan berdasarkan timestamp.
+        // Ini penting supaya rekod pagi lama tidak menghalang kehadiran KAFA.
+        if (record?.timestamp instanceof Date) {
+            return getSession(record.timestamp);
+        }
+
+        return null;
+    }
+
+    async function findTodayAttendance(studentId, targetSession = getSession()) {
         const today = getTodayKey();
         const records = [];
+
+        function collectRecord(data) {
+            const timestamp = data.timestamp?.toDate
+                ? data.timestamp.toDate()
+                : null;
+
+            if (!timestamp || getTodayKey(timestamp) !== today) return;
+
+            const record = { ...data, timestamp };
+            const recordSession = getRecordSession(record);
+
+            // KRITIKAL: semakan duplicate mesti berdasarkan
+            // tarikh + murid + sesi, bukan tarikh + murid sahaja.
+            if (recordSession === targetSession) {
+                records.push(record);
+            }
+        }
 
         // Rekod baharu: studentId
         const newQuery = query(
@@ -782,17 +844,7 @@
         );
 
         const newSnapshot = await getDocs(newQuery);
-
-        newSnapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const timestamp = data.timestamp?.toDate
-                ? data.timestamp.toDate()
-                : null;
-
-            if (timestamp && getTodayKey(timestamp) === today) {
-                records.push({ ...data, timestamp });
-            }
-        });
+        newSnapshot.forEach(docSnap => collectRecord(docSnap.data()));
 
         // Keserasian dengan rekod lama yang masih menggunakan userId.
         const legacyQuery = query(
@@ -801,17 +853,7 @@
         );
 
         const legacySnapshot = await getDocs(legacyQuery);
-
-        legacySnapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            const timestamp = data.timestamp?.toDate
-                ? data.timestamp.toDate()
-                : null;
-
-            if (timestamp && getTodayKey(timestamp) === today) {
-                records.push({ ...data, timestamp });
-            }
-        });
+        legacySnapshot.forEach(docSnap => collectRecord(docSnap.data()));
 
         records.sort((a, b) => a.timestamp - b.timestamp);
         return records[0] || null;
@@ -819,12 +861,20 @@
 
     async function saveAttendance(student) {
         const now = new Date();
+        const session = getSession(now);
+        const sessionLabel = getSessionLabel(session);
         const status = getAttendanceStatus(now);
 
         try {
-            setStatus("Menyemak rekod kehadiran...", "#1d4ed8", "#eff6ff");
+            setStatus(
+                `Menyemak rekod ${sessionLabel}...`,
+                "#1d4ed8",
+                "#eff6ff"
+            );
 
-            const existing = await findTodayAttendance(student.studentId);
+            // Hanya semak rekod untuk SESI semasa.
+            // Rekod pagi tidak menghalang rekod KAFA pada hari yang sama.
+            const existing = await findTodayAttendance(student.studentId, session);
 
             $("overlay").style.backgroundColor = existing
                 ? "#f59e0b"
@@ -836,27 +886,31 @@
                     : "-";
 
                 $("overlayIcon").innerText = "ℹ️";
-                $("overlayText").innerText = "SUDAH DIREKODKAN";
+                $("overlayText").innerText = `SUDAH DIREKODKAN — ${sessionLabel}`;
                 $("overlayDetail").innerHTML =
                     `<strong>${student.name.toUpperCase()}</strong><br>` +
                     `${student.kelas.toUpperCase()}<br>` +
                     `ID: ${student.studentId}<br><br>` +
+                    `Sesi: <strong>${sessionLabel}</strong><br>` +
                     `Telah diimbas pada ${firstTime}`;
             } else {
                 await addDoc(collection(db, "attendance"), {
                     studentId: student.studentId,
                     name: student.name.toUpperCase(),
                     kelas: student.kelas.toUpperCase(),
+                    session,
+                    sessionLabel,
                     status,
                     timestamp: serverTimestamp()
                 });
 
                 $("overlayIcon").innerText = "✅";
-                $("overlayText").innerText = "KEHADIRAN DIREKODKAN";
+                $("overlayText").innerText = `KEHADIRAN ${sessionLabel} DIREKODKAN`;
                 $("overlayDetail").innerHTML =
                     `<strong>${student.name.toUpperCase()}</strong><br>` +
                     `${student.kelas.toUpperCase()}<br>` +
                     `ID: ${student.studentId}<br><br>` +
+                    `Sesi: <strong>${sessionLabel}</strong><br>` +
                     `<strong>${status.toUpperCase()}</strong><br>` +
                     `${now.toLocaleTimeString("ms-MY")}`;
             }
