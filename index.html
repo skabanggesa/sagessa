@@ -389,6 +389,7 @@
         getDocs,
         query,
         where,
+        Timestamp,
         serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -447,6 +448,17 @@
     let scanBlockedUntil = 0;
     let candidateStudentId = null;
     let candidateMatchCount = 0;
+
+    // =====================================================
+    // FIRESTORE EFFICIENT MODE
+    // Attendance hari ini dibaca SEKALI selepas PIN.
+    // Selepas itu semakan duplicate dibuat daripada RAM cache.
+    // Ini mengelakkan query Firestore pada setiap imbasan wajah.
+    // =====================================================
+    const todayAttendanceCache = new Map();
+    let todayAttendanceLoaded = false;
+    let todayAttendanceLoading = false;
+    let todayAttendanceDateKey = null;
 
     const successBeep = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
     successBeep.preload = "auto";
@@ -598,6 +610,9 @@
         try {
             await loadStudents();
 
+            // Efficient Mode: baca attendance hari ini SEKALI sahaja.
+            await loadTodayAttendanceCache();
+
             if (registeredUsers.length === 0) {
                 setStatus(
                     "Belum ada murid berdaftar biometrik. Sila daftar biometrik di Admin.",
@@ -679,6 +694,7 @@
         try {
             setStatus("Mengemas kini data SSA...", "#1d4ed8", "#eff6ff");
             await loadStudents();
+            await loadTodayAttendanceCache(true);
             setStatus(
                 `${registeredUsers.length} murid dengan biometrik sedia diimbas.`,
                 "#166534",
@@ -917,47 +933,90 @@
         return null;
     }
 
-    async function findTodayAttendance(studentId, targetSession = getSession()) {
+    function attendanceCacheKey(studentId, session) {
+        return `${getTodayKey()}|${String(studentId).trim()}|${session}`;
+    }
+
+    async function loadTodayAttendanceCache(force = false) {
         const today = getTodayKey();
-        const records = [];
 
-        function collectRecord(data) {
-            const timestamp = data.timestamp?.toDate
-                ? data.timestamp.toDate()
-                : null;
-
-            if (!timestamp || getTodayKey(timestamp) !== today) return;
-
-            const record = { ...data, timestamp };
-            const recordSession = getRecordSession(record);
-
-            // KRITIKAL: semakan duplicate mesti berdasarkan
-            // tarikh + murid + sesi, bukan tarikh + murid sahaja.
-            if (recordSession === targetSession) {
-                records.push(record);
-            }
+        if (todayAttendanceLoaded && todayAttendanceDateKey === today && !force) {
+            return;
         }
 
-        // Rekod baharu: studentId
-        const newQuery = query(
-            collection(db, "attendance"),
-            where("studentId", "==", studentId)
-        );
+        if (todayAttendanceLoading) {
+            return;
+        }
 
-        const newSnapshot = await getDocs(newQuery);
-        newSnapshot.forEach(docSnap => collectRecord(docSnap.data()));
+        todayAttendanceLoading = true;
+        todayAttendanceCache.clear();
+        todayAttendanceDateKey = today;
 
-        // Keserasian dengan rekod lama yang masih menggunakan userId.
-        const legacyQuery = query(
-            collection(db, "attendance"),
-            where("userId", "==", studentId)
-        );
+        try {
+            const now = new Date();
+            const start = new Date(now);
+            start.setHours(0, 0, 0, 0);
 
-        const legacySnapshot = await getDocs(legacyQuery);
-        legacySnapshot.forEach(docSnap => collectRecord(docSnap.data()));
+            const end = new Date(now);
+            end.setHours(23, 59, 59, 999);
 
-        records.sort((a, b) => a.timestamp - b.timestamp);
-        return records[0] || null;
+            // SATU bacaan untuk semua rekod attendance hari ini.
+            // Tiada query per murid semasa scanning.
+            const todayQuery = query(
+                collection(db, "attendance"),
+                where("timestamp", ">=", Timestamp.fromDate(start)),
+                where("timestamp", "<=", Timestamp.fromDate(end))
+            );
+
+            const snapshot = await getDocs(todayQuery);
+
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                const studentId = String(data.studentId || data.userId || "").trim();
+
+                if (!studentId) return;
+
+                const timestamp = data.timestamp?.toDate
+                    ? data.timestamp.toDate()
+                    : null;
+
+                if (!timestamp || getTodayKey(timestamp) !== today) return;
+
+                const recordSession = getRecordSession({ ...data, timestamp });
+                if (recordSession !== "PAGI" && recordSession !== "KAFA") return;
+
+                const key = attendanceCacheKey(studentId, recordSession);
+
+                // Simpan rekod pertama yang ditemui untuk sesi tersebut.
+                // Cache ini hanya digunakan untuk semakan duplicate.
+                if (!todayAttendanceCache.has(key)) {
+                    todayAttendanceCache.set(key, {
+                        ...data,
+                        studentId,
+                        timestamp
+                    });
+                }
+            });
+
+            todayAttendanceLoaded = true;
+            console.log(
+                `[SSA Efficient Mode] ${snapshot.size} rekod attendance hari ini dimuatkan sekali. ` +
+                `Cache duplicate: ${todayAttendanceCache.size}`
+            );
+        } catch (error) {
+            todayAttendanceLoaded = false;
+            console.error("Gagal memuatkan cache attendance hari ini:", error);
+            throw error;
+        } finally {
+            todayAttendanceLoading = false;
+        }
+    }
+
+    async function findTodayAttendance(studentId, targetSession = getSession()) {
+        const key = attendanceCacheKey(studentId, targetSession);
+
+        // Semakan duplicate TIDAK lagi membaca Firestore.
+        return todayAttendanceCache.get(key) || null;
     }
 
     async function saveAttendance(student) {
@@ -1004,6 +1063,22 @@
                     status,
                     timestamp: serverTimestamp()
                 });
+
+                // Kemas kini cache tempatan supaya scan seterusnya tidak query Firestore.
+                todayAttendanceCache.set(
+                    attendanceCacheKey(student.studentId, session),
+                    {
+                        studentId: student.studentId,
+                        name: student.name.toUpperCase(),
+                        kelas: student.kelas.toUpperCase(),
+                        session,
+                        sessionLabel,
+                        status,
+                        timestamp: now
+                    }
+                );
+                todayAttendanceLoaded = true;
+                todayAttendanceDateKey = getTodayKey(now);
 
                 $("overlayIcon").innerText = "✅";
                 $("overlayText").innerText = `KEHADIRAN ${sessionLabel} DIREKODKAN`;
