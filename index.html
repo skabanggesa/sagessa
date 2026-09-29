@@ -5,7 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistem Kehadiran Murid Digital V2.0</title>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js">    // =====================================================
+    // AUTO SYNC EVENT
+    // Apabila browser kembali online, cuba hantar queue.
+    // =====================================================
+    window.addEventListener("online", async () => {
+        console.log("[SSA Offline] Sambungan internet kembali.");
+        try {
+            await trySyncAttendanceQueue();
+            if (getPendingAttendanceCount() === 0) {
+                offlineMode = false;
+            }
+            updateOfflineIndicator();
+        } catch (error) {
+            console.warn("[SSA Offline] Auto-sync gagal:", error);
+        }
+    });
+
+    window.addEventListener("offline", () => {
+        offlineMode = true;
+        updateOfflineIndicator();
+        setStatus(
+            "Sambungan terputus • Offline Safety Mode aktif",
+            "#92400e",
+            "#fff7ed"
+        );
+    });
+
+    // Paparkan status queue seawal halaman dibuka.
+    updateOfflineIndicator();
+
+</script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
@@ -66,6 +96,19 @@
             margin: 6px 0 24px;
             font-weight: 700;
             letter-spacing: 1px;
+        }
+
+        .offline-box {
+            display: none;
+            margin: -8px 0 18px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: .76rem;
+            font-weight: 800;
+            line-height: 1.4;
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: #9a3412;
         }
 
         .status-box {
@@ -352,6 +395,7 @@
     <div class="subtitle">SISTEM KEHADIRAN MURID • V2.0</div>
 
     <div id="status" class="status-box">Memulakan sistem AI...</div>
+    <div id="offlineBox" class="offline-box"></div>
 
     <div id="pinSection">
         <input type="password"
@@ -460,6 +504,20 @@
     let todayAttendanceLoading = false;
     let todayAttendanceDateKey = null;
 
+    // =====================================================
+    // OFFLINE SAFETY MODE
+    // - Master Data + biometrik disimpan dalam localStorage.
+    // - Rekod kehadiran yang gagal dihantar ke Firestore
+    //   dimasukkan ke dalam pending queue.
+    // - Queue akan kekal walaupun browser ditutup / refresh.
+    // =====================================================
+    const MASTER_CACHE_KEY = "SSA_MASTER_CACHE_V2";
+    const ATTENDANCE_QUEUE_KEY = "SSA_ATTENDANCE_QUEUE_V2";
+    const MASTER_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+    let offlineMode = false;
+    let lastMasterSource = "firebase";
+
     const successBeep = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
     successBeep.preload = "auto";
 
@@ -471,6 +529,234 @@
         $("status").innerText = text;
         $("status").style.color = color;
         $("status").style.background = background;
+    }
+
+    function setOfflineIndicator(message = "") {
+        const box = $("offlineBox");
+        if (!box) return;
+
+        if (message) {
+            box.style.display = "block";
+            box.innerHTML = `⚠️ ${message}`;
+        } else {
+            box.style.display = "none";
+            box.innerHTML = "";
+        }
+    }
+
+    function getAttendanceQueue() {
+        try {
+            const raw = localStorage.getItem(ATTENDANCE_QUEUE_KEY);
+            const queue = raw ? JSON.parse(raw) : [];
+            return Array.isArray(queue) ? queue : [];
+        } catch (error) {
+            console.error("Gagal membaca offline queue:", error);
+            return [];
+        }
+    }
+
+    function saveAttendanceQueue(queue) {
+        try {
+            localStorage.setItem(ATTENDANCE_QUEUE_KEY, JSON.stringify(queue));
+            return true;
+        } catch (error) {
+            console.error("Gagal menyimpan offline queue:", error);
+            return false;
+        }
+    }
+
+    function getPendingAttendanceCount() {
+        return getAttendanceQueue().length;
+    }
+
+    function queueAttendance(record) {
+        const queue = getAttendanceQueue();
+
+        const duplicate = queue.some(item =>
+            String(item.studentId).trim() === String(record.studentId).trim() &&
+            item.session === record.session &&
+            item.dateKey === record.dateKey
+        );
+
+        if (!duplicate) {
+            queue.push(record);
+            saveAttendanceQueue(queue);
+        }
+
+        updateOfflineIndicator();
+        return !duplicate;
+    }
+
+    function removeQueuedAttendance(queueItem) {
+        const queue = getAttendanceQueue();
+
+        const index = queue.findIndex(item =>
+            item.localId === queueItem.localId
+        );
+
+        if (index >= 0) {
+            queue.splice(index, 1);
+            saveAttendanceQueue(queue);
+        }
+
+        updateOfflineIndicator();
+    }
+
+    function updateOfflineIndicator() {
+        const pending = getPendingAttendanceCount();
+
+        if (offlineMode) {
+            setOfflineIndicator(
+                pending > 0
+                    ? `MODE OFFLINE AKTIF • ${pending} rekod menunggu dihantar ke Firebase. Rekod tetap selamat di peranti ini.`
+                    : "MODE OFFLINE AKTIF • Rekod baharu akan disimpan dahulu di peranti dan dihantar apabila Firebase tersedia."
+            );
+        } else if (pending > 0) {
+            setOfflineIndicator(
+                `🔄 ${pending} rekod kehadiran masih menunggu sync ke Firebase.`
+            );
+        } else {
+            setOfflineIndicator("");
+        }
+    }
+
+    function cacheMasterData(users) {
+        try {
+            localStorage.setItem(
+                MASTER_CACHE_KEY,
+                JSON.stringify({
+                    savedAt: Date.now(),
+                    users
+                })
+            );
+            console.log("[SSA Offline] Master Data + biometrik dicache secara tempatan.");
+        } catch (error) {
+            console.error("Gagal cache Master Data:", error);
+        }
+    }
+
+    function loadMasterDataFromCache() {
+        try {
+            const raw = localStorage.getItem(MASTER_CACHE_KEY);
+            if (!raw) return false;
+
+            const cached = JSON.parse(raw);
+
+            if (!cached || !Array.isArray(cached.users)) return false;
+
+            const age = Date.now() - Number(cached.savedAt || 0);
+
+            if (age > MASTER_CACHE_MAX_AGE) {
+                console.warn("[SSA Offline] Cache Master Data sudah terlalu lama.");
+                return false;
+            }
+
+            registeredUsers = cached.users
+                .map(user => ({
+                    ...user,
+                    studentId: String(user.studentId || "").trim(),
+                    name: String(user.name || "").trim(),
+                    kelas: String(user.kelas || "").trim(),
+                    accessCode: String(user.accessCode ?? "").trim(),
+                    descriptors: Array.isArray(user.descriptors)
+                        ? user.descriptors.map(normalizeDescriptor).filter(Boolean)
+                        : []
+                }))
+                .filter(user => user.studentId && user.name && user.descriptors.length > 0);
+
+            if (registeredUsers.length === 0) return false;
+
+            lastMasterSource = "local";
+            offlineMode = true;
+
+            setStatus(
+                `${registeredUsers.length} murid dimuatkan daripada cache tempatan.`,
+                "#92400e",
+                "#fff7ed"
+            );
+
+            updateOfflineIndicator();
+
+            console.warn(
+                "[SSA Offline] Firebase tidak dapat dicapai. Menggunakan Master Data cache."
+            );
+
+            return true;
+        } catch (error) {
+            console.error("Gagal memuatkan Master Data cache:", error);
+            return false;
+        }
+    }
+
+    async function trySyncAttendanceQueue() {
+        const queue = getAttendanceQueue();
+
+        if (queue.length === 0) {
+            updateOfflineIndicator();
+            return;
+        }
+
+        let synced = 0;
+
+        for (const item of [...queue]) {
+            try {
+                await addDoc(collection(db, "attendance"), {
+                    studentId: item.studentId,
+                    name: item.name,
+                    kelas: item.kelas,
+                    session: item.session,
+                    sessionLabel: item.sessionLabel,
+                    status: item.status,
+                    timestamp: serverTimestamp()
+                });
+
+                const timestamp = new Date(item.timestamp);
+
+                todayAttendanceCache.set(
+                    attendanceCacheKey(item.studentId, item.session),
+                    {
+                        studentId: item.studentId,
+                        name: item.name,
+                        kelas: item.kelas,
+                        session: item.session,
+                        sessionLabel: item.sessionLabel,
+                        status: item.status,
+                        timestamp
+                    }
+                );
+
+                removeQueuedAttendance(item);
+                synced++;
+            } catch (error) {
+                console.warn(
+                    "[SSA Offline] Sync dihentikan kerana Firebase belum tersedia:",
+                    error
+                );
+                break;
+            }
+        }
+
+        updateOfflineIndicator();
+
+        if (synced > 0) {
+            console.log(`[SSA Offline] ${synced} rekod berjaya diselaraskan ke Firebase.`);
+        }
+
+        return synced;
+    }
+
+    function isSameAttendanceDay(record) {
+        return record?.dateKey === getTodayKey();
+    }
+
+    function getPendingAttendance(studentId, session) {
+        const queue = getAttendanceQueue();
+
+        return queue.find(item =>
+            isSameAttendanceDay(item) &&
+            String(item.studentId).trim() === String(studentId).trim() &&
+            item.session === session
+        ) || null;
     }
 
     function normalizeDescriptor(item) {
@@ -509,64 +795,89 @@
     async function loadStudents() {
         setStatus("Memuatkan Master Data murid...", "#1d4ed8", "#eff6ff");
 
-        // 1. Baca Master Collection
-        const studentSnap = await getDocs(collection(db, "students"));
-        const studentMap = new Map();
+        try {
+            // 1. Baca Master Collection
+            const studentSnap = await getDocs(collection(db, "students"));
+            const studentMap = new Map();
 
-        studentSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const studentId = String(data.studentId || "").trim();
+            studentSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const studentId = String(data.studentId || "").trim();
 
-            if (studentId) {
-                studentMap.set(studentId, data);
+                if (studentId) {
+                    studentMap.set(studentId, data);
+                }
+            });
+
+            // 2. Baca data khusus biometrik SSA
+            const biometricSnap = await getDocs(collection(db, "student_biometrics"));
+
+            registeredUsers = [];
+
+            biometricSnap.forEach(docSnap => {
+                const biometricData = docSnap.data();
+                const studentId = String(
+                    biometricData.studentId || docSnap.id || ""
+                ).trim();
+
+                const masterData = studentMap.get(studentId);
+
+                // Biometrik tanpa Master Data tidak digunakan.
+                if (!masterData) {
+                    console.warn(
+                        "Biometrik diabaikan kerana studentId tiada dalam students:",
+                        studentId
+                    );
+                    return;
+                }
+
+                const student = normalizeStudent(
+                    studentId,
+                    masterData,
+                    biometricData
+                );
+
+                if (student.name && student.descriptors.length > 0) {
+                    registeredUsers.push(student);
+                }
+            });
+
+            // Simpan salinan lengkap yang diperlukan scanner.
+            cacheMasterData(registeredUsers);
+
+            offlineMode = false;
+            lastMasterSource = "firebase";
+            updateOfflineIndicator();
+
+            console.log("Master Data murid:", studentMap.size);
+            console.log("Murid dengan biometrik:", registeredUsers.length);
+
+            if (registeredUsers.length > 0) {
+                setStatus(
+                    `${registeredUsers.length} murid berdaftar biometrik sedia diimbas`,
+                    "#166534",
+                    "#f0fdf4"
+                );
+            } else {
+                setStatus(
+                    `Master Data: ${studentMap.size} murid. Belum ada biometrik berdaftar.`,
+                    "#92400e",
+                    "#fffbeb"
+                );
             }
-        });
 
-        // 2. Baca data khusus biometrik SSA
-        const biometricSnap = await getDocs(collection(db, "student_biometrics"));
+            return true;
+        } catch (error) {
+            console.error("Gagal memuatkan Master Data dari Firebase:", error);
 
-        registeredUsers = [];
+            // OFFLINE SAFETY: gunakan cache Master Data terakhir yang sah.
+            const loadedFromCache = loadMasterDataFromCache();
 
-        biometricSnap.forEach(docSnap => {
-            const biometricData = docSnap.data();
-            const studentId = String(
-                biometricData.studentId || docSnap.id || ""
-            ).trim();
-
-            const masterData = studentMap.get(studentId);
-
-            // Biometrik tanpa Master Data tidak digunakan.
-            if (!masterData) {
-                console.warn("Biometrik diabaikan kerana studentId tiada dalam students:", studentId);
-                return;
+            if (loadedFromCache) {
+                return true;
             }
 
-            const student = normalizeStudent(
-                studentId,
-                masterData,
-                biometricData
-            );
-
-            if (student.name && student.descriptors.length > 0) {
-                registeredUsers.push(student);
-            }
-        });
-
-        console.log("Master Data murid:", studentMap.size);
-        console.log("Murid dengan biometrik:", registeredUsers.length);
-
-        if (registeredUsers.length > 0) {
-            setStatus(
-                `${registeredUsers.length} murid berdaftar biometrik sedia diimbas`,
-                "#166534",
-                "#f0fdf4"
-            );
-        } else {
-            setStatus(
-                `Master Data: ${studentMap.size} murid. Belum ada biometrik berdaftar.`,
-                "#92400e",
-                "#fffbeb"
-            );
+            throw error;
         }
     }
 
@@ -610,8 +921,27 @@
         try {
             await loadStudents();
 
-            // Efficient Mode: baca attendance hari ini SEKALI sahaja.
-            await loadTodayAttendanceCache();
+            // Efficient Mode: cuba baca attendance hari ini SEKALI sahaja.
+            // Jika Firestore quota exceeded, scanner tetap boleh berjalan
+            // menggunakan offline queue.
+            try {
+                await loadTodayAttendanceCache();
+                offlineMode = false;
+            } catch (attendanceError) {
+                offlineMode = true;
+                console.warn(
+                    "[SSA Offline] Attendance Firebase tidak tersedia. " +
+                    "Scanner akan menggunakan Offline Safety Mode.",
+                    attendanceError
+                );
+            }
+
+            updateOfflineIndicator();
+
+            // Cuba sync rekod lama yang masih pending.
+            if (!offlineMode) {
+                await trySyncAttendanceQueue();
+            }
 
             if (registeredUsers.length === 0) {
                 setStatus(
@@ -694,7 +1024,18 @@
         try {
             setStatus("Mengemas kini data SSA...", "#1d4ed8", "#eff6ff");
             await loadStudents();
-            await loadTodayAttendanceCache(true);
+
+            try {
+                await loadTodayAttendanceCache(true);
+                offlineMode = false;
+                await trySyncAttendanceQueue();
+            } catch (error) {
+                offlineMode = true;
+                console.warn("[SSA Offline] Refresh Firebase gagal. Kekal dalam Offline Safety Mode.", error);
+            }
+
+            updateOfflineIndicator();
+
             setStatus(
                 `${registeredUsers.length} murid dengan biometrik sedia diimbas.`,
                 "#166534",
@@ -1024,6 +1365,7 @@
         const session = getSession(now);
         const sessionLabel = getSessionLabel(session);
         const status = getAttendanceStatus(now);
+        const dateKey = getTodayKey(now);
 
         try {
             setStatus(
@@ -1032,9 +1374,23 @@
                 "#eff6ff"
             );
 
-            // Hanya semak rekod untuk SESI semasa.
-            // Rekod pagi tidak menghalang rekod KAFA pada hari yang sama.
-            const existing = await findTodayAttendance(student.studentId, session);
+            // 1. Semak RAM cache Firestore.
+            let existing = await findTodayAttendance(student.studentId, session);
+
+            // 2. Semak offline queue juga.
+            // Ini menghalang murid daripada direkod dua kali
+            // walaupun Firestore masih quota exceeded.
+            const pendingExisting = getPendingAttendance(
+                student.studentId,
+                session
+            );
+
+            if (!existing && pendingExisting) {
+                existing = {
+                    ...pendingExisting,
+                    timestamp: new Date(pendingExisting.timestamp)
+                };
+            }
 
             $("overlay").style.backgroundColor = existing
                 ? "#f59e0b"
@@ -1042,7 +1398,7 @@
 
             if (existing) {
                 const firstTime = existing.timestamp
-                    ? existing.timestamp.toLocaleTimeString("ms-MY")
+                    ? new Date(existing.timestamp).toLocaleTimeString("ms-MY")
                     : "-";
 
                 $("overlayIcon").innerText = "ℹ️";
@@ -1053,42 +1409,109 @@
                     `ID: ${student.studentId}<br><br>` +
                     `Sesi: <strong>${sessionLabel}</strong><br>` +
                     `Telah diimbas pada ${firstTime}`;
+
             } else {
-                await addDoc(collection(db, "attendance"), {
+                const record = {
+                    localId:
+                        `${student.studentId}_${session}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    dateKey,
                     studentId: student.studentId,
                     name: student.name.toUpperCase(),
                     kelas: student.kelas.toUpperCase(),
                     session,
                     sessionLabel,
                     status,
-                    timestamp: serverTimestamp()
-                });
+                    timestamp: now.toISOString()
+                };
 
-                // Kemas kini cache tempatan supaya scan seterusnya tidak query Firestore.
+                let savedToFirebase = false;
+
+                // Jika cache attendance berjaya dimuatkan, cuba terus ke Firebase.
+                // Jika quota/network gagal, fallback automatik ke local queue.
+                try {
+                    await addDoc(collection(db, "attendance"), {
+                        studentId: record.studentId,
+                        name: record.name,
+                        kelas: record.kelas,
+                        session: record.session,
+                        sessionLabel: record.sessionLabel,
+                        status: record.status,
+                        timestamp: serverTimestamp()
+                    });
+
+                    savedToFirebase = true;
+
+                    todayAttendanceCache.set(
+                        attendanceCacheKey(record.studentId, record.session),
+                        {
+                            ...record,
+                            timestamp: now
+                        }
+                    );
+
+                    todayAttendanceLoaded = true;
+                    todayAttendanceDateKey = dateKey;
+
+                    // Selepas satu write berjaya, cuba hantar pending queue.
+                    await trySyncAttendanceQueue();
+
+                } catch (firebaseError) {
+                    console.warn(
+                        "[SSA Offline] Firestore gagal. Rekod disimpan dalam Offline Queue.",
+                        firebaseError
+                    );
+
+                    const queued = queueAttendance(record);
+
+                    if (!queued && getPendingAttendance(
+                        record.studentId,
+                        record.session
+                    )) {
+                        console.warn("[SSA Offline] Rekod sama sudah berada dalam queue.");
+                    }
+
+                    offlineMode = true;
+                    savedToFirebase = false;
+                }
+
+                // Masukkan ke cache RAM walaupun offline.
+                // Ini memastikan scan seterusnya tidak dianggap sebagai rekod baharu.
                 todayAttendanceCache.set(
-                    attendanceCacheKey(student.studentId, session),
+                    attendanceCacheKey(record.studentId, record.session),
                     {
-                        studentId: student.studentId,
-                        name: student.name.toUpperCase(),
-                        kelas: student.kelas.toUpperCase(),
-                        session,
-                        sessionLabel,
-                        status,
+                        ...record,
                         timestamp: now
                     }
                 );
-                todayAttendanceLoaded = true;
-                todayAttendanceDateKey = getTodayKey(now);
 
-                $("overlayIcon").innerText = "✅";
-                $("overlayText").innerText = `KEHADIRAN ${sessionLabel} DIREKODKAN`;
-                $("overlayDetail").innerHTML =
-                    `<strong>${student.name.toUpperCase()}</strong><br>` +
-                    `${student.kelas.toUpperCase()}<br>` +
-                    `ID: ${student.studentId}<br><br>` +
-                    `Sesi: <strong>${sessionLabel}</strong><br>` +
-                    `<strong>${status.toUpperCase()}</strong><br>` +
-                    `${now.toLocaleTimeString("ms-MY")}`;
+                todayAttendanceLoaded = true;
+                todayAttendanceDateKey = dateKey;
+
+                if (savedToFirebase) {
+                    $("overlayIcon").innerText = "✅";
+                    $("overlayText").innerText = `KEHADIRAN ${sessionLabel} DIREKODKAN`;
+                    $("overlayDetail").innerHTML =
+                        `<strong>${record.name}</strong><br>` +
+                        `${record.kelas}<br>` +
+                        `ID: ${record.studentId}<br><br>` +
+                        `Sesi: <strong>${sessionLabel}</strong><br>` +
+                        `<strong>${status.toUpperCase()}</strong><br>` +
+                        `${now.toLocaleTimeString("ms-MY")}<br><br>` +
+                        `<span style="color:#166534;font-weight:800;">☁️ Disimpan ke Firebase</span>`;
+                } else {
+                    $("overlayIcon").innerText = "📦";
+                    $("overlayText").innerText = `KEHADIRAN ${sessionLabel} DIREKODKAN`;
+                    $("overlayDetail").innerHTML =
+                        `<strong>${record.name}</strong><br>` +
+                        `${record.kelas}<br>` +
+                        `ID: ${record.studentId}<br><br>` +
+                        `Sesi: <strong>${sessionLabel}</strong><br>` +
+                        `<strong>${status.toUpperCase()}</strong><br>` +
+                        `${now.toLocaleTimeString("ms-MY")}<br><br>` +
+                        `<span style="color:#9a3412;font-weight:800;">📦 Disimpan di peranti — akan sync automatik</span>`;
+                }
+
+                updateOfflineIndicator();
             }
 
             $("overlay").style.display = "flex";
@@ -1106,17 +1529,24 @@
                 candidateMatchCount = 0;
                 scanBlockedUntil = 0;
 
-                setStatus("Mencari wajah...", "#475569", "#eff6ff");
+                setStatus(
+                    offlineMode
+                        ? "Mencari wajah... • Offline Safety Mode"
+                        : "Mencari wajah...",
+                    "#475569",
+                    "#eff6ff"
+                );
+
                 $("studentBadge").style.display = "none";
 
                 resetTimer();
             }, 3500);
 
         } catch (error) {
-            console.error("Ralat database:", error);
+            console.error("Ralat menyimpan rekod:", error);
 
             setStatus(
-                "Ralat menyimpan rekod. Sila cuba lagi.",
+                "Ralat memproses rekod. Sila cuba lagi.",
                 "#b91c1c",
                 "#fef2f2"
             );
