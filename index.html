@@ -413,13 +413,25 @@
     const MORNING_SESSION_END = "13:00";
     const KAFA_LATE_TIME = "14:05";
     const MATCH_THRESHOLD = 0.48;
-    const SCAN_INTERVAL = 180;
+
+    // Kawalan imbasan supaya kamera tidak terlalu sensitif.
+    const SCAN_INTERVAL = 260;
+    const STABLE_MATCH_REQUIRED = 2;
+    const REJECT_COOLDOWN = 3500;
     const SLEEP_TIMEOUT = 10000;
+
+    // Anggaran saiz wajah dalam paparan kamera.
+    // Jika terlalu kecil = murid terlalu jauh.
+    // Jika terlalu besar = murid terlalu dekat.
+    const FACE_MIN_WIDTH_RATIO = 0.20;
+    const FACE_MAX_WIDTH_RATIO = 0.52;
+    const FACE_CENTER_MIN = 0.30;
+    const FACE_CENTER_MAX = 0.70;
 
     // =====================================================
     // SAGE / SSA DATA ARCHITECTURE
-    // students            = Master Data Murid
-    // student_biometrics  = descriptor + accessCode SSA
+    // students            = Master Data Murid + Kod Akses
+    // student_biometrics  = descriptor biometrik sahaja
     // attendance          = transaksi kehadiran berdasarkan studentId + session
     // =====================================================
 
@@ -432,6 +444,9 @@
     let currentStream = null;
     let currentFacingMode = "user";
     let sleepTimer = null;
+    let scanBlockedUntil = 0;
+    let candidateStudentId = null;
+    let candidateMatchCount = 0;
 
     const successBeep = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
     successBeep.preload = "auto";
@@ -472,7 +487,9 @@
             studentId: String(studentId || "").trim(),
             name: String(studentData?.name || "").trim(),
             kelas: String(studentData?.kelas || "").trim(),
-            accessCode: String(biometricData?.accessCode || "").trim(),
+            // Kod Akses ialah sebahagian daripada Master Collection students.
+            // Jangan ambil daripada student_biometrics.
+            accessCode: String(studentData?.accessCode ?? "").trim(),
             descriptors
         };
     }
@@ -623,7 +640,10 @@
 
         await video.play();
 
-        setStatus("Kamera bersedia. Sila lihat kamera...", "#166534", "#f0fdf4");
+        setStatus("Kamera bersedia. Berdiri di tengah dan lihat kamera...", "#166534", "#f0fdf4");
+        scanBlockedUntil = 0;
+        candidateStudentId = null;
+        candidateMatchCount = 0;
         requestAnimationFrame(scanLoop);
     }
 
@@ -675,6 +695,9 @@
 
         if (isProcessing || isSleeping) return;
 
+        // Selepas BUKAN SAYA, beri masa kepada murid untuk berundur/bersedia.
+        if (Date.now() < scanBlockedUntil) return;
+
         if (!lastScanTime || now - lastScanTime >= SCAN_INTERVAL) {
             lastScanTime = now;
             await doScan();
@@ -707,7 +730,65 @@
             }
 
             resetTimer();
-            setStatus("Wajah dikesan. Mengesahkan identiti...", "#1d4ed8", "#eff6ff");
+
+            // -------------------------------------------------
+            // SEMAK JARAK & KEDUDUKAN WAJAH
+            // -------------------------------------------------
+            const box = detection.detection.box;
+            const videoWidth = video.videoWidth || 1;
+            const videoHeight = video.videoHeight || 1;
+            const faceWidthRatio = box.width / videoWidth;
+            const faceHeightRatio = box.height / videoHeight;
+            const faceCenterX = (box.x + box.width / 2) / videoWidth;
+            const faceCenterY = (box.y + box.height / 2) / videoHeight;
+
+            // Wajah terlalu jauh.
+            if (faceWidthRatio < FACE_MIN_WIDTH_RATIO) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA DEKAT SEDIKIT DENGAN KAMERA", "#92400e", "#fffbeb");
+                return;
+            }
+
+            // Wajah terlalu dekat.
+            if (faceWidthRatio > FACE_MAX_WIDTH_RATIO) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA UNDUR SEDIKIT DARI KAMERA", "#92400e", "#fffbeb");
+                return;
+            }
+
+            // Wajah terlalu tinggi / rendah.
+            if (faceCenterY < 0.30) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA TURUNKAN KEDUDUKAN WAJAH", "#92400e", "#fffbeb");
+                return;
+            }
+
+            if (faceCenterY > 0.72) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA NAIKKAN KEDUDUKAN WAJAH", "#92400e", "#fffbeb");
+                return;
+            }
+
+            // Wajah terlalu ke kiri / kanan.
+            if (faceCenterX < FACE_CENTER_MIN) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA GERAK SEDIKIT KE KANAN", "#92400e", "#fffbeb");
+                return;
+            }
+
+            if (faceCenterX > FACE_CENTER_MAX) {
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                setStatus("SILA GERAK SEDIKIT KE KIRI", "#92400e", "#fffbeb");
+                return;
+            }
+
+            setStatus("Wajah berada pada posisi sesuai. Mengesahkan...", "#1d4ed8", "#eff6ff");
 
             let bestMatch = null;
             let lowestDist = Infinity;
@@ -727,8 +808,25 @@
             }
 
             if (bestMatch && lowestDist < MATCH_THRESHOLD) {
+                // Jangan terus buka modal pada satu frame sahaja.
+                // Wajah yang sama mesti dikesan secara konsisten sekurang-kurangnya
+                // STABLE_MATCH_REQUIRED kali untuk mengurangkan false match.
+                if (candidateStudentId === bestMatch.studentId) {
+                    candidateMatchCount++;
+                } else {
+                    candidateStudentId = bestMatch.studentId;
+                    candidateMatchCount = 1;
+                }
+
+                if (candidateMatchCount < STABLE_MATCH_REQUIRED) {
+                    setStatus("Sila pandang kamera dan jangan bergerak...", "#1d4ed8", "#eff6ff");
+                    return;
+                }
+
                 isProcessing = true;
                 pendingStudent = bestMatch;
+                candidateStudentId = null;
+                candidateMatchCount = 0;
 
                 // Jangan reset wrongMatchCount di sini.
                 // Dua kali "BUKAN SAYA" akan membuka fallback Kod Akses.
@@ -746,6 +844,9 @@
 
                 return;
             }
+
+            candidateStudentId = null;
+            candidateMatchCount = 0;
 
             setStatus(
                 `Wajah belum dikenali. Skor: ${isFinite(lowestDist) ? lowestDist.toFixed(2) : "-"}`,
@@ -926,6 +1027,9 @@
                 isProcessing = false;
                 wrongMatchCount = 0;
                 lastScanTime = 0;
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                scanBlockedUntil = 0;
 
                 setStatus("Mencari wajah...", "#475569", "#eff6ff");
                 $("studentBadge").style.display = "none";
@@ -946,6 +1050,9 @@
                 isProcessing = false;
                 pendingStudent = null;
                 lastScanTime = 0;
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                scanBlockedUntil = Date.now() + 1200;
             }, 2500);
         }
     }
@@ -969,13 +1076,37 @@
                 $("personalCodeInput").value = "";
                 setTimeout(() => $("personalCodeInput").focus(), 100);
             } else {
-                alert("Sila imbas semula wajah anda dengan lebih jelas.");
+                // Jangan benarkan scanner terus menangkap wajah yang sama.
+                // Beri masa kepada murid untuk bersedia semula.
                 pendingStudent = null;
+                candidateStudentId = null;
+                candidateMatchCount = 0;
+                scanBlockedUntil = Date.now() + REJECT_COOLDOWN;
+                isProcessing = false;
+                lastScanTime = 0;
 
-                setTimeout(() => {
-                    isProcessing = false;
-                    lastScanTime = 0;
-                }, 800);
+                setStatus(
+                    "SILA BERSEDIA... IMBASAN AKAN DISAMBUNG DALAM 3 SAAT",
+                    "#92400e",
+                    "#fffbeb"
+                );
+
+                let remaining = 3;
+                const countdown = setInterval(() => {
+                    remaining--;
+                    if (remaining > 0) {
+                        setStatus(
+                            `SILA BERSEDIA... ${remaining} SAAT`,
+                            "#92400e",
+                            "#fffbeb"
+                        );
+                    } else {
+                        clearInterval(countdown);
+                        setStatus("Mencari wajah...", "#475569", "#eff6ff");
+                        lastScanTime = 0;
+                        resetTimer();
+                    }
+                }, 1000);
             }
         }
     };
@@ -988,11 +1119,13 @@
             return;
         }
 
-        // Kod akses datang daripada student_biometrics,
-        // bukan Master Collection students.
-        const foundUser = registeredUsers.find(
-            user => user.accessCode && user.accessCode === inputCode
-        );
+        // Kod Akses datang daripada Master Collection students.accessCode.
+        // registeredUsers telah dibina daripada Master Data + biometrik,
+        // jadi nilai ini kekal sepadan dengan murid yang didaftarkan.
+        const foundUser = registeredUsers.find(user => {
+            const savedCode = String(user.accessCode ?? "").trim();
+            return savedCode !== "" && savedCode === inputCode;
+        });
 
         if (!foundUser) {
             alert("Kod Akses tidak sah!");
@@ -1015,6 +1148,9 @@
         wrongMatchCount = 0;
         isProcessing = false;
         lastScanTime = 0;
+        candidateStudentId = null;
+        candidateMatchCount = 0;
+        scanBlockedUntil = Date.now() + 800;
         setStatus("Mencari wajah...", "#475569", "#eff6ff");
     };
 
